@@ -1,0 +1,31 @@
+# projection acquisition parameters for dataset generation
+
+global:
+  image_resolution: [ 512, 512 ] # count X count
+  grid_resolution: [ 128, 128, 128 ] # count X count X count
+  image_spacing: [ 0.2769, 0.2789 ] # range [mm]
+  grid_spacing: [ 0.8, 0.8 ] # range [mm]
+
+right: 
+  _0:
+    sid: [ 970, 1010 ] # range [mm]
+    sod: [ 745, 785 ] # range [mm]
+    alpha: [ 18, 42 ] # range [deg]
+    beta: [ -8, 8 ]
+  _1:
+    sid: [ 1050, 1070 ] # range [mm]
+    sod: [ 742, 788 ] # range [mm]
+    alpha: [-8, 8 ] # range [mm]
+    beta: [ 18, 80 ] # range [mm]
+
+left:
+  _0:
+    sid: [ 1030, 1090 ] # range [mm]
+    sod: [ 740, 760 ] # range [mm]
+    alpha: [ -8, 8 ] # range [deg]
+    beta: [ 18, 42 ]
+  _1:
+    sid: [ 960, 1160 ] # range [mm]
+    sod: [ 737, 763 ] # range [mm]
+    alpha: [-47, -23 ] # range [mm]
+    beta: [ 21, 45 ] # range [mm]

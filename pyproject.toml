@@ -1,0 +1,32 @@
+[project]
+name = "3dreconsnet"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = "==3.11.13"
+dependencies = [
+    "astra-toolbox>=2.2.0",
+    "matplotlib>=3.10.5",
+    "nibabel>=5.3.2",
+    "odl>=0.8.2",
+    "pyyaml>=6.0.2",
+    "scikit-image>=0.25.2",
+    "scikit-learn>=1.7.1",
+    "torch>=2.8.0",
+    "tornado>=6.5.2",
+    "tqdm>=4.67.1",
+]
+
+[tool.uv.sources]
+odl = { git = "https://github.com/odlgroup/odl" }
+3dreconsnet = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+    ".",
+]
+
+[dependency-groups]
+dev = [
+    "3dreconsnet",
+]
