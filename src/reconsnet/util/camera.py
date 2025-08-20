@@ -28,7 +28,6 @@ def _source_params(alpha, beta, sod):
 
 def build_camera_model(alpha, beta, sid, sod, grid_spacing, grid_size, img_spacing, img_size):
     proj_axis, proj_angle = _source_params(alpha, beta, sod)
-    print(proj_axis, proj_angle)
     
     cube_width = grid_spacing * grid_size[0]
     cube_height = grid_spacing * grid_size[1]
