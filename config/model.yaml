@@ -1,0 +1,5 @@
+data:
+  grid_dim: 32
+  batch_size: 8
+  num_workers: 4
+  val_split: 0.2

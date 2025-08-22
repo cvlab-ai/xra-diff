@@ -6,6 +6,7 @@ import nibabel as nib
 
 from reconsnet.util.coords import pcd_to_voxel, compute_downscales
 from reconsnet.data.preprocess import preprocess
+from reconsnet.data.data import get_dm_left, get_dm_right
 
 DOWNSAMPLE = 100
 GRID_DIM = 128
@@ -66,5 +67,7 @@ visualize_pointclouds(
     [1.0, 1.0, 0.3],
     s=1
 )
+
+dm0, dm1 = get_dm_right("data/"), get_dm_left("data/")
 
 

@@ -6,13 +6,16 @@ readme = "README.md"
 requires-python = "==3.11.13"
 dependencies = [
     "astra-toolbox>=2.2.0",
+    "diffusers>=0.35.1",
     "matplotlib>=3.10.5",
     "nibabel>=5.3.2",
     "odl>=0.8.2",
+    "pytorch-lightning>=2.5.3",
     "pyyaml>=6.0.2",
     "scikit-image>=0.25.2",
     "scikit-learn>=1.7.1",
     "torch>=2.8.0",
+    "torchmetrics>=1.8.1",
     "tornado>=6.5.2",
     "tqdm>=4.67.1",
 ]
