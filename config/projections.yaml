@@ -4,28 +4,28 @@ global:
   image_resolution: [ 512, 512 ] # count X count
   grid_resolution: [ 128, 128, 128 ] # count X count X count
   image_spacing: [ 0.2769, 0.2789 ] # range [mm]
-  grid_spacing: [ 0.8, 0.8 ] # range [mm]
+  grid_spacing: [ 0.8, 1.1 ] # range [mm]
 
 right: 
   _0:
-    sid: [ 970, 1010 ] # range [mm]
+    sid: [ 970, 1010 ]  # range [mm]
     sod: [ 745, 785 ] # range [mm]
-    alpha: [ 18, 42 ] # range [deg]
-    beta: [ -8, 8 ]
+    alpha: [ 0, 50 ] # range [deg]
+    beta: [ -20, 20 ]
   _1:
     sid: [ 1050, 1070 ] # range [mm]
     sod: [ 742, 788 ] # range [mm]
-    alpha: [-8, 8 ] # range [mm]
-    beta: [ 18, 80 ] # range [mm]
+    alpha: [-18, -42 ] # range [deg]
+    beta: [ -18, 18 ] # range [deg]
 
 left:
   _0:
-    sid: [ 1030, 1090 ] # range [mm]
-    sod: [ 740, 760 ] # range [mm]
-    alpha: [ -8, 8 ] # range [deg]
-    beta: [ 18, 42 ]
+    sid: [ 1030, 1200 ] # range [mm]
+    sod: [ 740, 785 ] # range [mm]
+    alpha: [ -18, 18 ] # range [deg]
+    beta: [ 0, 0 ]
   _1:
     sid: [ 960, 1160 ] # range [mm]
-    sod: [ 737, 763 ] # range [mm]
-    alpha: [-47, -23 ] # range [mm]
-    beta: [ 21, 45 ] # range [mm]
+    sod: [ 737, 852 ] # range [mm]
+    alpha: [-47, -22 ] # range [deg]
+    beta: [ 10, 45 ] # range [deg]
