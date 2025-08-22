@@ -4,10 +4,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import nibabel as nib
 
+from reconsnet.util.coords import pcd_to_voxel, compute_downscales
 from reconsnet.data.preprocess import preprocess
-from reconsnet.data.dataset import XRay
 
 DOWNSAMPLE = 100
+GRID_DIM = 128
 
 
 def grid_to_pointcloud(grid, threshold=0.01):
@@ -17,21 +18,22 @@ def grid_to_pointcloud(grid, threshold=0.01):
 
 def volume_to_pointcloud(path, threshold=0.5):
     nii = nib.load(path)
-    data = nii.get_fdata()
-    coords = np.argwhere(data > threshold)
+    volume = nii.get_fdata()
+    pcd = np.argwhere(volume > threshold)
+    
+    step, stepz = compute_downscales(volume.shape, [GRID_DIM, GRID_DIM, GRID_DIM])
+    pcd[:, [0, 1]] = pcd[:, [0, 1]] / step
+    pcd[:, 2] = pcd[:, 2] / stepz
+    return pcd
 
-    coords_hom = np.c_[coords, np.ones(len(coords))]
-    coords_world = coords_hom @ nii.affine.T
-    return coords_world[:, :3]
 
-
-def visualize_pointclouds(pcs, labels, colors, s=2):
+def visualize_pointclouds(pcs, labels, colors, alphas, s=2):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection="3d")
 
-    for pts, lbl, col in zip(pcs, labels, colors):
+    for pts, lbl, col, alpha in zip(pcs, labels, colors, alphas):
         ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2],
-                   s=s, c=col, alpha=0.5, label=lbl)
+                   s=s, c=col, alpha=alpha, label=lbl)
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
@@ -40,22 +42,28 @@ def visualize_pointclouds(pcs, labels, colors, s=2):
     ax.set_title("Reconstruction vs Original")
     plt.show()
 
+def recons(path):
+    projections = joblib.load(path)
+
+    xray0 = projections[0]
+    xray1 = projections[1]
+
+    grid = preprocess(xray0, xray1, [128, 128, 128])
+    points_recon = grid_to_pointcloud(grid, threshold=0.01)[::DOWNSAMPLE]
+    return points_recon
+
 
 matplotlib.use("WebAgg")
 
-projections = joblib.load("data/projections/right0.joblib")
-
-xray0 = projections[0]
-xray1 = projections[1]
-
-grid = preprocess(xray0, xray1, [128, 128, 128])
-points_recon = grid_to_pointcloud(grid, threshold=0.01)[::DOWNSAMPLE]
+points_recons_left = recons("data/projections/left0.joblib")
+points_recons_right = recons("data/projections/right0.joblib")
 points_orig = volume_to_pointcloud("data/example.label.nii.gz", threshold=0.5)[::DOWNSAMPLE]
 
 visualize_pointclouds(
-    [points_recon, points_orig],
-    ["Reconstruction", "Ground Truth"],
-    ["red", "blue"],
+    [points_recons_right, points_recons_left, points_orig],
+    ["Reconstruction (right)", "Reconstruction (left)", "Ground Truth"],
+    ["blue", "red", "yellow"],
+    [1.0, 1.0, 0.3],
     s=1
 )
 

@@ -1,21 +1,24 @@
-import odl
 import nibabel as nib
 import numpy as np
 import sys
 import yaml
 import matplotlib.pyplot as plt
 import torch
+import joblib
 
 from pathlib import Path
 from tqdm import tqdm
 from sklearn.cluster import DBSCAN
 from random import uniform
 from reconsnet.util.camera import build_camera_model
+from reconsnet.util.coords import pcd_to_voxel, compute_downscales, transpose
+from reconsnet.data.dataset import XRay
 
 
 AVOID_UNNECESSARY_COPY = True
 
-INPUT_PATH=Path("/home/dominik/.cache/kagglehub/datasets/xiaoweixumedicalai/imagecas/versions/3/imagecas_unzipped")
+INPUT_PATH=Path("/home/shared/imagecas/imagecas_unzipped")
+# INPUT_PATH = Path("data/")
 OUTPUT_PATH=Path("data/projections")
 CONFIG_PATH=Path("config")
 with open(CONFIG_PATH / "projections.yaml") as f:
@@ -27,8 +30,15 @@ def main():
     
     for i, path in enumerate(tqdm(files)):
         grid_left, grid_right = load_data(path)
-        model_projections(CONFIG['right'], grid_right)
-        model_projections(CONFIG['left'], grid_left)
+        
+        joblib.dump(
+            model_projections(CONFIG['right'], grid_right),
+            OUTPUT_PATH / f"right{i}.joblib"
+        )
+        joblib.dump(
+            model_projections(CONFIG['left'], grid_left),
+            OUTPUT_PATH / f"left{i}.joblib"
+        )
 
 
 def model_projections(side_config: dict, grid: np.array):
@@ -48,7 +58,16 @@ def model_projections(side_config: dict, grid: np.array):
         img_spacing = uniform(*global_config["image_spacing"])
         camera = build_camera_model(alpha, beta, sid, sod, grid_spacing, grid_res, img_spacing, img_res)
         projection = camera(grid)[0]
-        projections.append(projection)
+        
+        projections.append(
+            XRay(
+                projection, 
+                sid, sod,
+                alpha, beta,
+                img_spacing, img_res
+            )
+        )
+        
     return projections
 
 
@@ -59,17 +78,9 @@ def load_data(path: Path) -> tuple[torch.Tensor, torch.Tensor]:
     volume = volume.get_fdata()
     pcd = np.argwhere(volume > 0)
     pcd_left, pcd_right = split_left_right(pcd)
-    
-    def pcd_to_voxel(pcd):
-        voxel_grid = np.zeros(grid_res, dtype=np.uint8)
-        step = volume.shape[0] / grid_res[0]
-        pcd = pcd / step
-        
-        pcd_vox = np.floor(pcd).astype(int)
-        voxel_grid[pcd_vox[:, 0], pcd_vox[:, 1], pcd_vox[:, 2]] = 1
-        return voxel_grid
-
-    return pcd_to_voxel(pcd_left), pcd_to_voxel(pcd_right)
+    step, stepz = compute_downscales(volume.shape, grid_res)
+   
+    return pcd_to_voxel(pcd_left, grid_res, step, stepz), pcd_to_voxel(pcd_right, grid_res, step, stepz)
 
 
 def split_left_right(coords):
@@ -90,28 +101,31 @@ def example():
     import matplotlib
     matplotlib.use("WebAgg")
     grid_left, grid_right = load_data("data/example.label.nii.gz")
-    right_projections = model_projections(CONFIG["right"], grid_right)
-    left_projections = model_projections(CONFIG["left"], grid_left)
+    
+    for _ in range(0, 5):
+    
+        right_projections = model_projections(CONFIG["right"], grid_right)
+        left_projections = model_projections(CONFIG["left"], grid_left)
 
-    _, axes = plt.subplots(1, 5, figsize=(15, 5))
-    vol_proj = np.max(grid_left + grid_right, axis=0) 
-     
-    axes[0].imshow(vol_proj.T, cmap="gray", origin="lower")
-    axes[0].set_title("3D Volume max. intensity projection")
-    axes[1].imshow(right_projections[0], cmap="gray")
-    axes[1].set_title("right proj 0")
-    axes[2].imshow(left_projections[0], cmap="gray")
-    axes[2].set_title("left proj 0")
-    axes[3].imshow(right_projections[1], cmap="gray")
-    axes[3].set_title("right proj 1")
-    axes[4].imshow(left_projections[1], cmap="gray")
-    axes[4].set_title("left proj 1")
+        _, axes = plt.subplots(1, 5, figsize=(15, 5))
+        vol_proj = np.max(grid_left + grid_right, axis=0) 
+        
+        axes[0].imshow(vol_proj.T, cmap="gray", origin="lower")
+        axes[0].set_title("3D Volume max. intensity projection")
+        axes[1].imshow(transpose(right_projections[0].img), cmap="gray")
+        axes[1].set_title("right proj 0")
+        axes[2].imshow(transpose(left_projections[0].img), cmap="gray")
+        axes[2].set_title("left proj 0")
+        axes[3].imshow(transpose(right_projections[1].img), cmap="gray")
+        axes[3].set_title("right proj 1")
+        axes[4].imshow(transpose(left_projections[1].img), cmap="gray")
+        axes[4].set_title("left proj 1")
 
-    for ax in axes:
-        ax.axis("off")
+        for ax in axes:
+            ax.axis("off")
 
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":    

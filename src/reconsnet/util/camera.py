@@ -14,13 +14,11 @@ def _source_params(alpha, beta, sod):
         axis=(x,y,z)
         return axis, angle
     
-    
-    from_source_vec = (0, sod / 1000, 0)
-    from_rot_vec = (-1, 0, 0)
-    
-    to_source_vec = axis_rotation((0,0,1), angle=alpha, vectors=from_source_vec)
-    to_rot_vec = axis_rotation((0, 0, 1), angle=alpha, vectors=from_rot_vec)
-    to_source_vec = axis_rotation(to_rot_vec[0], angle=beta, vectors=to_source_vec[0])
+    from_source_vec = (0, -sod, 0)
+    alpha = -alpha
+    beta = -beta
+    to_source_vec = axis_rotation((0, 0, 1), alpha, from_source_vec)
+    to_source_vec = axis_rotation((1, 0, 0), -beta, to_source_vec)
     rot_mat = rotation_matrix_from_to(from_source_vec, to_source_vec[0])
     proj_axis, proj_angle = rotation_matrix_to_axis_angle(rot_mat)
     return proj_axis, proj_angle
@@ -43,7 +41,7 @@ def build_camera_model(alpha, beta, sid, sod, grid_spacing, grid_size, img_spaci
     )
     angle_partition = odl.uniform_partition(
         min_pt=0, 
-        max_pt=proj_angle,
+        max_pt=proj_angle * 2,
         shape=[1]
     )
     detector_partition = odl.uniform_partition(
