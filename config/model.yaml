@@ -1,5 +1,5 @@
 data:
-  grid_dim: 32
+  grid_dim: 60
   batch_size: 8
   num_workers: 4
   val_split: 0.2
@@ -23,5 +23,5 @@ model:
     - "UpBlock3D"
 
 scheduler:
-  num_train_timesteps: 1000,
+  num_train_timesteps: 1000
   beta_schedule: "squaredcos_cap_v2"
