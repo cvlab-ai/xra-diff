@@ -6,7 +6,7 @@ import nibabel as nib
 
 from reconsnet.util.coords import pcd_to_voxel, compute_downscales
 from reconsnet.data.preprocess import preprocess
-from reconsnet.data.data import get_dm_left, get_dm_right
+from reconsnet.data.dataset import get_dm_left, get_dm_right
 
 DOWNSAMPLE = 100
 GRID_DIM = 128

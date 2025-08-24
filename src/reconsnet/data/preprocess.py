@@ -1,7 +1,7 @@
 import odl
 import numpy as np
 
-from .dataset import XRay
+from .data import XRay
 from ..util.camera import build_camera_model
 
 

@@ -12,7 +12,7 @@ from sklearn.cluster import DBSCAN
 from random import uniform
 from reconsnet.util.camera import build_camera_model
 from reconsnet.util.coords import pcd_to_voxel, compute_downscales, transpose
-from reconsnet.data.dataset import XRay
+from reconsnet.data.data import XRay
 
 
 AVOID_UNNECESSARY_COPY = True
@@ -30,13 +30,19 @@ def main():
     
     for i, path in enumerate(tqdm(files)):
         grid_left, grid_right = load_data(path)
-        
+
         joblib.dump(
-            model_projections(CONFIG['right'], grid_right),
+            { 
+                "gt": grid_right, 
+                "projections": model_projections(CONFIG['right'], grid_right)
+            },
             OUTPUT_PATH / f"right{i}.joblib"
         )
         joblib.dump(
-            model_projections(CONFIG['left'], grid_left),
+            {
+                "gt": grid_left,
+                "projections": model_projections(CONFIG['left'], grid_left),
+            },
             OUTPUT_PATH / f"left{i}.joblib"
         )
 

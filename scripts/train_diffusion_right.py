@@ -1,11 +1,11 @@
 
 from reconsnet.train import train_with_clearml
 from reconsnet.model.diffusion import DiffusionModule
-from reconsnet.data.data import get_dm_right
+from reconsnet.data.dataset import get_dm_right
 
 
 train_with_clearml(
     "diffusion_right",
-    DiffusionModule(),
+    DiffusionModule,
     get_dm_right("/home/shared/imagecas/projections")
 )
