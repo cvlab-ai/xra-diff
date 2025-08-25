@@ -14,16 +14,17 @@ def default_transform(projections, gt):
     preprocessed = preprocess(
         projections[0],
         projections[1],
-        [grid_dim, grid_dim, grid_dim]
+        [128, 128, 128] # OG grid
     )
 
     gt = torch.from_numpy(gt).float().unsqueeze(0).unsqueeze(0)
     gt = F.interpolate(gt, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
-    gt = gt.squeeze(0)
-
-    preprocessed = torch.from_numpy(preprocessed).float()
+    
     preprocessed = (preprocessed - preprocessed.min()) / (preprocessed.max() - preprocessed.min() + 1e-8)
-    return preprocessed.unsqueeze(0), gt
+    preprocessed = torch.from_numpy(preprocessed).float().unsqueeze(0).unsqueeze(0)
+    preprocessed = F.interpolate(preprocessed, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
+    
+    return preprocessed.squeeze(0), gt.squeeze(0)
 
 class XRayDataset(Dataset):
     def __init__(self, root_dir, side, transform=default_transform):
@@ -66,7 +67,10 @@ class XRayDataModule(pl.LightningDataModule):
             val_size = int(len(self.dataset) * self.val_split)
             train_size = len(self.dataset) - val_size
             self.train_dataset, self.val_dataset = random_split(self.dataset, [train_size, val_size])
-            
+            # from torch.utils.data import Subset
+            # self.train_dataset = Subset(self.train_dataset, [0])
+            # self.val_dataset = Subset(self.val_dataset, [0])
+
             print(f"Initialized dataset for {self.dataset.side} arteries consisting of {len(self.dataset)} samples ({len(self.train_dataset)} train, {len(self.val_dataset)} val)")
             
 
@@ -79,7 +83,7 @@ class XRayDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.val_dataset,
                           batch_size=self.batch_size,
-                          shuffle=False,
+                          shuffle=True,
                           )        
         
 

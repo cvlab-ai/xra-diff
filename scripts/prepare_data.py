@@ -17,8 +17,8 @@ from reconsnet.data.data import XRay
 
 AVOID_UNNECESSARY_COPY = True
 
-INPUT_PATH=Path("/home/shared/imagecas/imagecas_unzipped")
-# INPUT_PATH = Path("data/")
+# INPUT_PATH=Path("/home/shared/imagecas/imagecas_unzipped")
+INPUT_PATH = Path("data/")
 OUTPUT_PATH=Path("data/projections")
 CONFIG_PATH=Path("config")
 with open(CONFIG_PATH / "projections.yaml") as f:

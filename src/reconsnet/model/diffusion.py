@@ -70,7 +70,7 @@ class DiffusionModule(pl.LightningModule):
         batch = next(iter(val_loader))
         x, y = batch
         x = x.to(self.device)
-        y = y.to(self.device)
+        y = y.to(self.device)  
         sampled_voxels = self.reconstruct(x)
 
         def log_sample(ix, threshold=0.5):
@@ -93,13 +93,16 @@ class DiffusionModule(pl.LightningModule):
                 self.logger.experiment.add_image(title, img_gen.transpose(2, 0, 1), self.current_epoch)
                 plt.close(fig_gen)
             
-            pcd = (voxels > threshold).nonzero(as_tuple=False).cpu().numpy()
+            pcd = torch.argwhere(voxels > threshold).cpu().numpy()
+            gt_pcd = torch.argwhere(gt_voxels > 0).cpu().numpy()
+            
             gt_pcd = (gt_voxels > 0).nonzero(as_tuple=False).cpu().numpy()
             backproj_pcd = (backproj > 0).nonzero(as_tuple=False).cpu().numpy()
             log_pcd(pcd, f"Reconstructed_{ix}_{threshold} PCD Plot")
             log_pcd(gt_pcd, f"GT_{ix}")
             log_pcd(backproj_pcd, f"Backprojected_{ix}")
 
+        batch_size = x.shape[0]
         for ix, thr in [
             (0, 0.5),
             (1, 0.5),
@@ -107,21 +110,20 @@ class DiffusionModule(pl.LightningModule):
             (0, 0.9),
             (1, 0.9),
             (2, 0.9)
-        ]: log_sample(ix, thr)
+        ]: 
+            if ix >= batch_size: continue
+            log_sample(ix, thr)
 
-    def reconstruct(self, backprojection, timesteps=None):
-        self.model.eval()
-        B = backprojection.shape[0]
-        voxels = torch.randn_like(backprojection) 
-        if timesteps is None:
-            timesteps = reversed(tqdm(range(self.noise_scheduler.config.num_train_timesteps)))
-        else:
-            timesteps = reversed(tqdm(range(timesteps)))
+    @torch.no_grad
+    def reconstruct(self, backprojection):
+        self.eval()
+        num_samples = backprojection.shape[0]
+        device = self.device
+        x = torch.randn_like(backprojection)
+        timesteps = self.noise_scheduler.timesteps
+        for t in tqdm(timesteps):
+            t_tensor = torch.full((num_samples,), t, device=device, dtype=torch.long)
+            noise_pred = self(x, t_tensor, backprojection)
+            x = self.noise_scheduler.step(noise_pred, t, x).prev_sample
+        return x
 
-        for t in timesteps:
-            t_tensor = torch.full((B,), t, device=self.device, dtype=torch.long)
-            with torch.no_grad():
-                noise_pred = self.forward(voxels, t_tensor, backprojection)
-                voxels = self.noise_scheduler.step(noise_pred, t, voxels).prev_sample
-        self.model.train()
-        return voxels

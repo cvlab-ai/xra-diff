@@ -1,6 +1,6 @@
 data:
-  grid_dim: 40
-  batch_size: 8
+  grid_dim: 60
+  batch_size: 1
   num_workers: 4
   val_split: 0.2
 
