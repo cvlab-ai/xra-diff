@@ -10,7 +10,6 @@ from ..config import get_config
 
 
 def default_transform(projections, gt):
-    eps = 1e-8
     grid_dim = get_config()['data']['grid_dim']
     preprocessed = preprocess(
         projections[0],
@@ -23,8 +22,7 @@ def default_transform(projections, gt):
     gt = gt.squeeze(0)
 
     preprocessed = torch.from_numpy(preprocessed).float()
-    preprocessed = 2 * (preprocessed - preprocessed.min()) / (preprocessed.max() - preprocessed.min() + eps) - 1
-    gt = 2 * gt - 1
+    preprocessed = (preprocessed - preprocessed.min()) / (preprocessed.max() - preprocessed.min() + 1e-8)
     return preprocessed.unsqueeze(0), gt
 
 class XRayDataset(Dataset):

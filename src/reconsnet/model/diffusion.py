@@ -76,25 +76,29 @@ class DiffusionModule(pl.LightningModule):
         def log_sample(ix, threshold=0.5):
             voxels = sampled_voxels[ix][0]
             gt_voxels = y[ix][0]
+            backproj = x[ix][0]
 
+            def log_pcd(pcd, title):
+                fig_gen = plt.figure(figsize=(8, 8))
+                ax_gen = fig_gen.add_subplot(111, projection='3d')
+                ax_gen.scatter(pcd[:, 0], pcd[:, 1], pcd[:, 2], s=1, c='blue', alpha=0.3)
+                ax_gen.set_title(title)
+                ax_gen.scatter(pcd[:, 0], pcd[:, 1], pcd[:, 2], s=1, c='red')
+                ax_gen.set_xlabel('X')
+                ax_gen.set_ylabel('Y')
+                ax_gen.set_zlabel('Z')
+                ax_gen.set_box_aspect([1,1,1])
+                fig_gen.canvas.draw()
+                img_gen = np.array(fig_gen.canvas.renderer.buffer_rgba())
+                self.logger.experiment.add_image(title, img_gen.transpose(2, 0, 1), self.current_epoch)
+                plt.close(fig_gen)
+            
             pcd = (voxels > threshold).nonzero(as_tuple=False).cpu().numpy()
             gt_pcd = (gt_voxels > 0).nonzero(as_tuple=False).cpu().numpy()
-
-            fig_gen = plt.figure(figsize=(8, 8))
-            ax_gen = fig_gen.add_subplot(111, projection='3d')
-            ax_gen.scatter(pcd[:, 0], pcd[:, 1], pcd[:, 2], s=1, c='blue', alpha=0.3)
-            ax_gen.scatter(gt_pcd[:, 0], gt_pcd[:, 1], gt_pcd[:, 2], s=1, c='red')
-
-            ax_gen.set_title(f'Epoch {self.current_epoch} PCD (threshold={threshold})')
-            ax_gen.set_xlabel('X')
-            ax_gen.set_ylabel('Y')
-            ax_gen.set_zlabel('Z')
-            ax_gen.set_box_aspect([1,1,1])
-    
-            fig_gen.canvas.draw()
-            img_gen = np.array(fig_gen.canvas.renderer.buffer_rgba())
-            self.logger.experiment.add_image(f"{ix}_{threshold} PCD Plot", img_gen.transpose(2, 0, 1), self.current_epoch)
-            plt.close(fig_gen)
+            backproj_pcd = (backproj > 0).nonzero(as_tuple=False).cpu().numpy()
+            log_pcd(pcd, f"Reconstructed_{ix}_{threshold} PCD Plot")
+            log_pcd(gt_pcd, f"GT_{ix}")
+            log_pcd(backproj_pcd, f"Backprojected_{ix}")
 
         for ix, thr in [
             (0, 0.5),
