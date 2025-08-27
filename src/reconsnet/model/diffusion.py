@@ -4,12 +4,12 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 
-from PIL import Image
 from diffusers import UNet3DConditionModel, DDPMScheduler, DDIMScheduler
 from torchmetrics import PeakSignalNoiseRatio as PSNR
 from tqdm import tqdm
 
 from ..config import get_config
+from ..util.metrics import dice
 
 
 class DiffusionModule(pl.LightningModule):
@@ -20,19 +20,27 @@ class DiffusionModule(pl.LightningModule):
             sample_size=config['data']['grid_dim'],
             in_channels=2,
             out_channels=1,
-            **config['model']
+            **config['unet3d']
         )
         self.noise_scheduler = DDPMScheduler(
             **config['scheduler']
         )
+        self.guidance_scale = config['guidance']['scale']
+        self.drop_proba = config['guidance']['drop_proba']
         self.psnr = PSNR()
         self.lr = lr
 
-    def forward(self, voxels, t, backprojection):
+    def forward(self, voxels, t, backprojection, drop_proba=0.0):
+        cond = torch.zeros_like(backprojection) if torch.rand(1).item() < drop_proba else backprojection
         dummy = torch.zeros((voxels.shape[0], 1, 1024), device=self.device)
-        inp = torch.cat([voxels, backprojection], dim=1)
+        inp = torch.cat([voxels, cond], dim=1)
         return self.model(inp, t, dummy).sample
     
+    def guided_forward(self, voxels, t, backprojection):
+        cond = self(voxels, t, backprojection, drop_proba=0.0)
+        uncond = self(voxels, t, backprojection, drop_proba=1.0)
+        return uncond + (cond - uncond) * self.guidance_scale
+
     def step(self, batch, log_prefix=""):
         x, y = batch
         assert x.dim()==5 and y.dim()==5 and x.shape==y.shape, f"Got x {x.shape}, y {y.shape}"
@@ -44,7 +52,7 @@ class DiffusionModule(pl.LightningModule):
             device=self.device
         ).long()
         noisy_y = self.noise_scheduler.add_noise(y, noise, timesteps)
-        noise_pred = self(noisy_y, timesteps, x)
+        noise_pred = self(noisy_y, timesteps, x, drop_proba=self.drop_proba)
     
         loss = F.mse_loss(noise_pred, noise)
         psnr_value = self.psnr(noise_pred, noise)
@@ -78,6 +86,15 @@ class DiffusionModule(pl.LightningModule):
             gt_voxels = y[ix][0]
             backproj = x[ix][0]
 
+            dice_gt_recons = dice(voxels, gt_voxels, threshold)
+            dice_gt_backproj = dice(backproj, gt_voxels, threshold)
+            dice_improvement = dice_gt_recons - dice_gt_backproj
+
+            pcd = torch.argwhere(voxels > threshold).cpu().numpy()
+            gt_pcd = torch.argwhere(gt_voxels > 0).cpu().numpy()
+            gt_pcd = (gt_voxels > 0).nonzero(as_tuple=False).cpu().numpy()
+            backproj_pcd = (backproj > 0).nonzero(as_tuple=False).cpu().numpy()
+
             def log_pcd(pcd, title):
                 fig_gen = plt.figure(figsize=(8, 8))
                 ax_gen = fig_gen.add_subplot(111, projection='3d')
@@ -93,11 +110,9 @@ class DiffusionModule(pl.LightningModule):
                 self.logger.experiment.add_image(title, img_gen.transpose(2, 0, 1), self.current_epoch)
                 plt.close(fig_gen)
             
-            pcd = torch.argwhere(voxels > threshold).cpu().numpy()
-            gt_pcd = torch.argwhere(gt_voxels > 0).cpu().numpy()
-            
-            gt_pcd = (gt_voxels > 0).nonzero(as_tuple=False).cpu().numpy()
-            backproj_pcd = (backproj > 0).nonzero(as_tuple=False).cpu().numpy()
+            self.log(f"Dice_{ix}_{threshold}_gt_recons", dice_gt_recons, on_epoch=True, prog_bar=True)
+            self.log(f"Dice_{ix}_{threshold}_gt_backproj", dice_gt_backproj, on_epoch=True, prog_bar=True)
+            self.log(f"Dice_{ix}_{threshold}_improvement", dice_improvement, on_epoch=True, prog_bar=True)
             log_pcd(pcd, f"Reconstructed_{ix}_{threshold} PCD Plot")
             log_pcd(gt_pcd, f"GT_{ix}")
             log_pcd(backproj_pcd, f"Backprojected_{ix}")
@@ -123,7 +138,7 @@ class DiffusionModule(pl.LightningModule):
         timesteps = self.noise_scheduler.timesteps
         for t in tqdm(timesteps):
             t_tensor = torch.full((num_samples,), t, device=device, dtype=torch.long)
-            noise_pred = self(x, t_tensor, backprojection)
+            noise_pred = self.guided_forward(x, t_tensor, backprojection)
             x = self.noise_scheduler.step(noise_pred, t, x).prev_sample
         return x
 
