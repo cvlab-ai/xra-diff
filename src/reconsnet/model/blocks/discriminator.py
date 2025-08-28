@@ -1,28 +1,54 @@
+### 
+### Implementation from https://github.com/WangStephen/DeepCA
+###
 import torch
 import torch.nn as nn
+from torch import cat
 
-from .conv import ConvBlock
-from .dsconv import DSConv
+from .dsconv import DCN_Conv
 
-
-class Discriminator(nn.Module):
-    def __init__(self):
+class Discriminator(torch.nn.Module):
+    def __init__(self, device, channels=1, dim=128):
         super().__init__()
+        self.pre_module = nn.Sequential(
+            nn.Conv3d(in_channels=channels, out_channels=64, kernel_size=4, stride=2, padding=1),
+            nn.InstanceNorm3d(64, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
 
-        self.ds_conv = DSConv(1, 48)
-        self.conv1 = ConvBlock(1, 64)
-        self.conv2 = ConvBlock(64, 128)
-        self.conv3 = ConvBlock(128, 256)
-        self.conv4 =  nn.Conv3d(256, 1, kernel_size=1, stride=1, padding=1, bias=False),
-        self.tanh = nn.Tanh()
-    
-    def forward(self, x1, x2):
-        x1 = self.conv1(x1)
-        x2 = self.ds_conv(x2)
-        concated = torch.concat(x1, x2)
-        x3 = self.conv2(concated)
-        x4 = self.conv3(x3)
-        x5 = self.conv4(x4)
-        out = torch.mean(self.tanh(x5))
-        
-        return out 
+        self.pool = nn.MaxPool3d(2, stride=2)
+
+        self.dsc0 = DCN_Conv(channels, 16, 3, 1.0, 0, True, device)
+        self.dsc1 = DCN_Conv(channels, 16, 3, 1.0, 1, True, device)
+        self.dsc2 = DCN_Conv(channels, 16, 3, 1.0, 2, True, device)
+
+        self.main_module = nn.Sequential(
+            nn.Conv3d(in_channels=112, out_channels=128, kernel_size=4, stride=2, padding=1),
+            nn.InstanceNorm3d(128, affine=True),
+            nn.LeakyReLU(0.2, inplace=True),        
+
+            nn.Conv3d(in_channels=128, out_channels=256, kernel_size=4, stride=2, padding=1),
+            nn.InstanceNorm3d(256, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
+            )
+
+        self.output = nn.Sequential(
+            nn.Conv3d(in_channels=256, out_channels=1, kernel_size=4, stride=1, padding=0),
+            nn.Tanh()
+        )
+
+
+    def forward(self, x):
+        xx = self.pre_module(x)
+        x = self.pool(x)
+        x0 = self.dsc0(x)
+        x1 = self.dsc1(x)
+        x2 = self.dsc2(x)
+        x = cat([xx, x0, x1, x2], dim=1)
+
+        x = self.main_module(x)
+        return self.output(x)
+
+    def feature_extraction(self, x):
+        x = self.main_module(x)
+        return x.view(-1, 1024*4*4)

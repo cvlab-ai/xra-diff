@@ -1,6 +1,7 @@
-'''
-Implementation of Dynamic Snake Convolution from https://github.com/YaoleiQi/DSCNet
-'''
+### 
+### Implementation from https://github.com/WangStephen/DeepCA
+###
+# -*- coding: utf-8 -*-
 import torch
 from torch import nn, cat
 
@@ -19,15 +20,16 @@ class Conv(nn.Module):
         return x
 
 
-class DSConv(nn.Module):
-    def __init__(self, in_ch, out_ch, kernel_size=3, extend_scope=1, if_offset=False, device="cuda"):
-        super(DSConv, self).__init__()
+class DCN_Conv(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
+        super(DCN_Conv, self).__init__()
         self.offset_conv = nn.Conv3d(in_ch, 3 * 2 * kernel_size, 3, padding=1)
-        self.bn = nn.BatchNorm3d(3 * 2 * kernel_size)
+        self.bn = nn.InstanceNorm3d(3 * 2 * kernel_size, affine=True)
         self.kernel_size = kernel_size
         self.device = device
 
         self.if_offset = if_offset
+        self.morph = morph
         self.extend_scope = extend_scope
 
         self.dcn_conv_x = nn.Conv3d(in_ch, out_ch, kernel_size=(1, 1, kernel_size), stride=(1, 1, kernel_size), padding=0)  #
@@ -47,23 +49,21 @@ class DSConv(nn.Module):
 
         dcn = DCN(input_shape, self.kernel_size, self.extend_scope, self.morph, self.device)
         deformed_feature = dcn.deform_conv(f, offset, self.if_offset)
-        
-        # morph 0
-        x = self.dcn_conv_x(deformed_feature)
-        x = self.gn(x)
-        x = self.relu(x)
-        
-        # morph 1
-        y = self.dcn_conv_y(deformed_feature)
-        y = self.gn(y)
-        y = self.relu(y)
-
-        # morph 2
-        z = self.dcn_conv_z(deformed_feature)
-        z = self.gn(z)
-        z = self.relu(z)
-
-        return torch.concat([x, y, z])
+        if self.morph == 0:
+            x = self.dcn_conv_x(deformed_feature)
+            x = self.gn(x)
+            x = self.relu(x)
+            return x
+        elif self.morph == 1:
+            x = self.dcn_conv_y(deformed_feature)
+            x = self.gn(x)
+            x = self.relu(x)
+            return x
+        else:
+            x = self.dcn_conv_z(deformed_feature)
+            x = self.gn(x)
+            x = self.relu(x)
+            return x
 
 class DCN(object):
     def __init__(self, input_shape, kernel_size, extend_scope, morph, device):
