@@ -130,7 +130,7 @@ class DiffusionModule(pl.LightningModule):
             log_sample(ix, thr)
 
     @torch.no_grad
-    def reconstruct(self, backprojection):
+    def reconstruct(self, backprojection, guidance=True):
         self.eval()
         num_samples = backprojection.shape[0]
         device = self.device
@@ -138,7 +138,34 @@ class DiffusionModule(pl.LightningModule):
         timesteps = self.noise_scheduler.timesteps
         for t in tqdm(timesteps):
             t_tensor = torch.full((num_samples,), t, device=device, dtype=torch.long)
-            noise_pred = self.guided_forward(x, t_tensor, backprojection)
+            if guidance:
+                noise_pred = self.guided_forward(x, t_tensor, backprojection)
+            else:
+                noise_pred = self(x, t_tensor, backprojection)            
             x = self.noise_scheduler.step(noise_pred, t, x).prev_sample
         return x
 
+    @torch.no_grad()
+    def fast_reconstruct(self, backprojection, num_inference_steps=50, guidance=True):
+        self.eval()
+        num_samples = backprojection.shape[0]
+        device = self.device
+        x = torch.randn_like(backprojection)
+        
+        scheduler = DDIMScheduler(
+            num_train_timesteps=1000,
+            beta_start=0.0001,
+            beta_end=0.02,
+            beta_schedule="linear",
+            clip_sample=False,
+        )
+        scheduler.set_timesteps(num_inference_steps=num_inference_steps)         
+        
+        for t in tqdm(scheduler.timesteps):
+            t_tensor = torch.full((num_samples,), t, device=device, dtype=torch.long)
+            if guidance:
+                noise_pred = self.guided_forward(x, t_tensor, backprojection)
+            else:
+                noise_pred = self(x, t_tensor, backprojection)
+            x = scheduler.step(noise_pred, t, x).prev_sample
+        return x
