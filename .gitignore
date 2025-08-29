@@ -16,3 +16,6 @@ data/projections
 
 # Other
 nohup.out
+# Logs
+nohup.out
+lightning_logs/

@@ -1,5 +1,5 @@
 data:
-  grid_dim: 60
+  grid_dim: 64 # changed for gan
   batch_size: 2
   num_workers: 4
   val_split: 0.2

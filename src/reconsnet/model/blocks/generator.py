@@ -59,15 +59,15 @@ class Generator(nn.Module):
 
         self.down1 = Down(in_channels, num_filters, batch_norm)
         self.down2 = Down(num_filters, num_filters * 2, batch_norm)
-        self.down3 = Down(num_filters * 2, num_filters * 4, batch_norm)
-        self.down4 = Down(num_filters * 4, num_filters * 8, batch_norm)
+        self.down3 = Down(num_filters * 2, num_filters * 8, batch_norm)
+        # self.down4 = Down(num_filters * 4, num_filters * 8, batch_norm)
 
         self.bridge = ConvBlock(num_filters * 8, num_filters * 8, batch_norm)
         self.viTrans = CCT(vol_size=8,n_input_channels=num_filters * 8,embedding_dim=num_filters * 8) 
         self.combine = ConvBlock(num_filters * 16, num_filters * 16, batch_norm)
 
-        self.up1 = Up(num_filters * 16, num_filters * 8, batch_norm, sample)
-        self.up2 = Up(num_filters * 8, num_filters * 4, batch_norm, sample)
+        # self.up1 = Up(num_filters * 16, num_filters * 8, batch_norm, sample)
+        self.up2 = Up(num_filters * 16, num_filters * 4, batch_norm, sample)
         self.up3 = Up(num_filters * 4, num_filters * 2, batch_norm, sample)
         self.up4 = Up(num_filters * 2, num_filters * 1, batch_norm, sample)
 
@@ -77,14 +77,14 @@ class Generator(nn.Module):
         conv1, x = self.down1(x)
         conv2, x = self.down2(x)
         conv3, x = self.down3(x)
-        conv4, x = self.down4(x)
+        # conv4, x = self.down4(x)
 
         x_b1 = self.bridge(x)
         x_b2 = self.viTrans(x)
         x = cat([x_b1, x_b2], dim=1)
         x = self.combine(x)
 
-        x = self.up1(x, conv4)
+        # x = self.up1(x, conv4)
         x = self.up2(x, conv3)
         x = self.up3(x, conv2)
         x = self.up4(x, conv1)
