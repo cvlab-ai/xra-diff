@@ -16,13 +16,14 @@ from tqdm import tqdm
 from .blocks.generator import Generator
 from .blocks.discriminator import Discriminator
 from ..config import get_config
-
+from ..util.metrics import dice
 
 
 
 class GANModule(pl.LightningModule):
     def __init__(self, lr=1e-4):
         super().__init__()
+        config = get_config()
         self.save_hyperparameters()
         self.automatic_optimization = False
 
@@ -55,6 +56,9 @@ class GANModule(pl.LightningModule):
 
         d_loss = (DG_score - DX_score + gradient_penalty)
         Wasserstein_D = DX_score - DG_score
+
+        self.log(f"train_discriminator_loss", d_loss, on_epoch=True, on_step=True, prog_bar=True)
+        self.log(f"train_Wasserstein_loss", Wasserstein_D, on_epoch=True, on_step=True, prog_bar=True)
         
         self.toggle_optimizer(optimizer_d)
         self.manual_backward(d_loss)
@@ -68,13 +72,85 @@ class GANModule(pl.LightningModule):
         l1_loss = self._generation_eval(output, gt)
         combined_loss = G_loss + l1_loss*100
 
+        self.log(f"train_generator_simple_loss", G_loss, on_epoch=True, on_step=True, prog_bar=True)
+        self.log(f"train_generator_l1_loss", l1_loss, on_epoch=True, on_step=True, prog_bar=True)
+        self.log(f"train_generator_combined_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
+
         self.toggle_optimizer(optimizer_g)
         self.manual_backward(combined_loss)
         optimizer_g.step()
         self.untoggle_optimizer(optimizer_g)
 
     def validation_step(self, batch, batch_idx):
-        pass
+        volumes, gt = batch
+        
+        outputs = self.generator(volumes)
+
+        DG_score = self.discriminator(torch.cat((volumes, outputs), 1)).mean() # D(G(z))
+        G_loss = -DG_score
+        l1_loss = self._generation_eval(outputs, gt)
+        combined_loss = G_loss + l1_loss * 100
+
+        self.log(f"val_generator_simple_loss", G_loss, on_epoch=True, on_step=True, prog_bar=True)
+        self.log(f"val_generator_l1_loss", l1_loss, on_epoch=True, on_step=True, prog_bar=True)
+        self.log(f"val_generator_combined_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
+    
+    def on_validation_epoch_end(self):
+        # if self.current_epoch % 10: return
+        val_loader = self.trainer.datamodule.val_dataloader()
+        batch = next(iter(val_loader))
+        x, y = batch
+        x = x.to(self.device)
+        y = y.to(self.device)  
+        sampled_voxels = self.generator(x)
+
+        def log_sample(ix, threshold=0.5):
+            voxels = sampled_voxels[ix][0]
+            gt_voxels = y[ix][0]
+            backproj = x[ix][0]
+
+            dice_gt_recons = dice(voxels, gt_voxels, threshold)
+            dice_gt_backproj = dice(backproj, gt_voxels, threshold)
+            dice_improvement = dice_gt_recons - dice_gt_backproj
+
+            pcd = torch.argwhere(voxels > threshold).cpu().numpy()
+            gt_pcd = torch.argwhere(gt_voxels > 0).cpu().numpy()
+            gt_pcd = (gt_voxels > 0).nonzero(as_tuple=False).cpu().numpy()
+            backproj_pcd = (backproj > 0).nonzero(as_tuple=False).cpu().numpy()
+
+            def log_pcd(pcd, title):
+                fig_gen = plt.figure(figsize=(8, 8))
+                ax_gen = fig_gen.add_subplot(111, projection='3d')
+                ax_gen.scatter(pcd[:, 0], pcd[:, 1], pcd[:, 2], s=1, c='blue', alpha=0.3)
+                ax_gen.set_title(title)
+                ax_gen.scatter(pcd[:, 0], pcd[:, 1], pcd[:, 2], s=1, c='red')
+                ax_gen.set_xlabel('X')
+                ax_gen.set_ylabel('Y')
+                ax_gen.set_zlabel('Z')
+                ax_gen.set_box_aspect([1,1,1])
+                fig_gen.canvas.draw()
+                img_gen = np.array(fig_gen.canvas.renderer.buffer_rgba())
+                self.logger.experiment.add_image(title, img_gen.transpose(2, 0, 1), self.current_epoch)
+                plt.close(fig_gen)
+            
+            self.log(f"Dice_{ix}_{threshold}_gt_recons", dice_gt_recons, on_epoch=True, prog_bar=True)
+            self.log(f"Dice_{ix}_{threshold}_gt_backproj", dice_gt_backproj, on_epoch=True, prog_bar=True)
+            self.log(f"Dice_{ix}_{threshold}_improvement", dice_improvement, on_epoch=True, prog_bar=True)
+            log_pcd(pcd, f"Reconstructed_{ix}_{threshold} PCD Plot")
+            log_pcd(gt_pcd, f"GT_{ix}")
+            log_pcd(backproj_pcd, f"Backprojected_{ix}")
+
+        batch_size = x.shape[0]
+        for ix, thr in [
+            (0, 0.5),
+            (1, 0.5),
+            (2, 0.5),
+            (0, 0.9),
+            (1, 0.9),
+            (2, 0.9)
+        ]: 
+            if ix >= batch_size: continue
+            log_sample(ix, thr)
 
     def configure_optimizers(self):
         g_optimizer = optim.Adam(
