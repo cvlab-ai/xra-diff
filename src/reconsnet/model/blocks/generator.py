@@ -72,7 +72,8 @@ class Generator(nn.Module):
         self.up4 = Up(num_filters * 2, num_filters * 1, batch_norm, sample)
 
         self.conv_class = nn.Conv3d(num_filters * 1, class_num, 1, stride=1, padding='same')
-
+        self.sigmoid = nn.Sigmoid()
+        
     def forward(self, x):
         conv1, x = self.down1(x)
         conv2, x = self.down2(x)
@@ -89,6 +90,7 @@ class Generator(nn.Module):
         x = self.up3(x, conv2)
         x = self.up4(x, conv1)
 
-        out = self.conv_class(x)
+        x = self.conv_class(x)
+        out = self.sigmoid(x)
 
         return out
