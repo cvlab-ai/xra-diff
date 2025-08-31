@@ -19,3 +19,4 @@ nohup.out
 # Logs
 nohup.out
 lightning_logs/
+checkpoints/

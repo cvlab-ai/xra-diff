@@ -41,6 +41,7 @@ class GANModule(pl.LightningModule):
         optimizer_g.zero_grad()
         optimizer_d.zero_grad()
 
+        self.toggle_optimizer(optimizer_d)
         output = self.generator(volumes)
 
         DX_score = self.discriminator(torch.cat((volumes, gt), 1)).mean() # D(x)
@@ -55,28 +56,26 @@ class GANModule(pl.LightningModule):
         )
 
         d_loss = (DG_score - DX_score + gradient_penalty)
-        Wasserstein_D = DX_score - DG_score
-
         self.log(f"train_discriminator_loss", d_loss, on_epoch=True, on_step=True, prog_bar=True)
-        self.log(f"train_Wasserstein_loss", Wasserstein_D, on_epoch=True, on_step=True, prog_bar=True)
+        # self.log(f"train_dg_score", DG_score, on_epoch=True, on_step=True, prog_bar=True)
+        # self.log(f"dx_score", DX_score, on_epoch=True, on_step=True, prog_bar=True)
+        # self.log(f"gradient_penalty", gradient_penalty, on_epoch=True, on_step=True, prog_bar=True)
         
-        self.toggle_optimizer(optimizer_d)
         self.manual_backward(d_loss)
         optimizer_d.step()
         self.untoggle_optimizer(optimizer_d)
 
+        self.toggle_optimizer(optimizer_g)
         output = self.generator(volumes)
         
         DG_score = self.discriminator(torch.cat((volumes, output), 1).detach()).mean()
         G_loss = -DG_score
         l1_loss = self._generation_eval(output, gt)
         combined_loss = G_loss + l1_loss*100
+        self.log(f"train_generator_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
+        # self.log(f"g_loss(-dg_score)", G_loss, on_epoch=True, on_step=True, prog_bar=True)
+        # self.log(f"l1_loss", l1_loss, on_epoch=True, on_step=True, prog_bar=True)
 
-        self.log(f"train_generator_simple_loss", G_loss, on_epoch=True, on_step=True, prog_bar=True)
-        self.log(f"train_generator_l1_loss", l1_loss, on_epoch=True, on_step=True, prog_bar=True)
-        self.log(f"train_generator_combined_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
-
-        self.toggle_optimizer(optimizer_g)
         self.manual_backward(combined_loss)
         optimizer_g.step()
         self.untoggle_optimizer(optimizer_g)
@@ -91,12 +90,10 @@ class GANModule(pl.LightningModule):
         l1_loss = self._generation_eval(outputs, gt)
         combined_loss = G_loss + l1_loss * 100
 
-        self.log(f"val_generator_simple_loss", G_loss, on_epoch=True, on_step=True, prog_bar=True)
-        self.log(f"val_generator_l1_loss", l1_loss, on_epoch=True, on_step=True, prog_bar=True)
-        self.log(f"val_generator_combined_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
+        self.log(f"val_generator_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
     
     def on_validation_epoch_end(self):
-        # if self.current_epoch % 10: return
+        if self.current_epoch % 10: return
         val_loader = self.trainer.datamodule.val_dataloader()
         batch = next(iter(val_loader))
         x, y = batch
