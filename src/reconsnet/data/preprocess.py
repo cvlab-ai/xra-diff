@@ -8,23 +8,26 @@ from ..util.camera import build_camera_model
 ASSUMED_GRID_SPACING =  0.8 # [mm] 
 
 
+def xray_to_camera_model(xray, grid_size, grid_spacing=ASSUMED_GRID_SPACING):
+    return build_camera_model(
+        xray.alpha,
+        xray.beta,
+        xray.sid,
+        xray.sod,
+        grid_spacing,
+        grid_size,
+        xray.spacing,
+        xray.size
+)    
+
+
 def preprocess(xray0: XRay, xray1: XRay, grid_size):
     '''
     get initial estimation of the shape
     '''
-    def xray_to_camera_model(xray):
-        return build_camera_model(
-            xray.alpha,
-            xray.beta,
-            xray.sid,
-            xray.sod,
-            ASSUMED_GRID_SPACING,
-            grid_size,
-            xray.spacing,
-            xray.size
-    )    
-    trf0 = xray_to_camera_model(xray0)
-    trf1 = xray_to_camera_model(xray1)
+
+    trf0 = xray_to_camera_model(xray0, grid_size)
+    trf1 = xray_to_camera_model(xray1, grid_size)
 
     trf = odl.BroadcastOperator(trf0, trf1)
     rec = trf.adjoint((xray0.img, xray1.img))
