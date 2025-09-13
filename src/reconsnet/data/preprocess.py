@@ -29,6 +29,7 @@ def preprocess(xray0: XRay, xray1: XRay, grid_size):
     trf0 = xray_to_camera_model(xray0, grid_size)
     trf1 = xray_to_camera_model(xray1, grid_size)
 
-    trf = odl.BroadcastOperator(trf0, trf1)
-    rec = trf.adjoint((xray0.img, xray1.img))
-    return rec.asarray()
+    bp0 = trf0.adjoint(xray0.img)
+    bp1 = trf1.adjoint(xray1.img)
+    intersect = np.minimum(bp0, bp1)    
+    return intersect.asarray()
