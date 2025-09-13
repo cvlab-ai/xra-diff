@@ -6,7 +6,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .metrics import dice, cd
+from .metrics import dice, confusion
 from ..config import get_config
 from ..data.preprocess import preprocess
 from .camera import build_camera_model
@@ -16,38 +16,43 @@ ASSUMED_GRID_SPACING = 0.8
 THRESHOLD_RANGE = {
     "start": 0.1,
     "stop": 1.0,
-    "num": 8
+    "num": 20
 }
 
 def synthetic_test(
     model, 
     ds, 
-    csv_ddpm_output_path,
-    csv_ddim_output_path,
+    csv_output_path,
 ):
     def make_test(reconstruct):
         df = []
         for i in tqdm(range(len(ds))):
             backprojection, gt = ds[i]
             backprojection = backprojection.to(model.device)
-            gt = gt.to(model.device)
+            gt = gt.to(model.device).unsqueeze(0) # add batch dim
             before = time.time()
             hat = reconstruct(backprojection.unsqueeze(0))
+                        
+            hat = (hat - hat.min()) / (hat.max() - hat.min())
             elapsed = time.time() - before
             entry = {
                 "elapsed": elapsed
             }
             for threshold in np.linspace(**THRESHOLD_RANGE):
-                dice3d = dice(hat, gt, threshold)
-                # chamfer = cd(hat, gt, threshold)
-                entry[f"dice_{threshold}"] = dice3d
-                # entry[f"chamfer_{threshold}"] = chamfer
-                                
+                entry = {
+                    **entry,
+                    **confusion(hat, gt, threshold, prefix="refined_")
+                }
+                entry = {
+                    **entry,
+                    **confusion(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_")
+                }   
+
+                                   
             df.append(pd.DataFrame([entry]))
         return pd.concat(df)
-        
-    make_test(model.fast_reconstruct).to_csv(csv_ddim_output_path)
-    make_test(model.reconstruct).to_csv(csv_ddpm_output_path)    
+
+    make_test(lambda x: model.fast_reconstruct(x, num_inference_steps=10, guidance=True)).to_csv(csv_output_path)
 
 
 def clinical_test(
