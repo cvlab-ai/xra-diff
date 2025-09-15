@@ -6,5 +6,5 @@ from reconsnet.data.dataset import get_dm_left
 train_with_clearml(
     "diffusion_left",
     DiffusionModule,
-    get_dm_left("/home/shared/imagecas/projections")
+    get_dm_left("/home/shared/imagecas/projections_split/train", "/home/shared/imagecas/projections_split/val")
 )

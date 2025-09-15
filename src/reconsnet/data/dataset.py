@@ -24,7 +24,10 @@ def default_transform(projections, gt):
     preprocessed = torch.from_numpy(preprocessed).float().unsqueeze(0).unsqueeze(0)
     preprocessed = F.interpolate(preprocessed, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
     
-    return preprocessed.squeeze(0), gt.squeeze(0)
+    def xray_to_tensor(x):
+        return torch.from_numpy(x.img.asarray()).unsqueeze(0)
+        
+    return preprocessed.squeeze(0), gt.squeeze(0), xray_to_tensor(projections[0]), xray_to_tensor(projections[1])
 
 class XRayDataset(Dataset):
     def __init__(self, root_dir, side, transform=default_transform):
@@ -55,24 +58,14 @@ class XRayDatasetRight(XRayDataset):
 
 
 class XRayDataModule(pl.LightningDataModule):
-    def __init__(self, dataset, batch_size, num_workers, val_split, **_):
+    def __init__(self, train_dataset, val_dataset, batch_size, num_workers, val_split, **_):
         super().__init__()
-        self.dataset = dataset
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.val_split = val_split
-        self.setup()
 
-    def setup(self, stage=None):
-            val_size = int(len(self.dataset) * self.val_split)
-            train_size = len(self.dataset) - val_size
-            self.train_dataset, self.val_dataset = random_split(self.dataset, [train_size, val_size])
-            # from torch.utils.data import Subset
-            # self.train_dataset = Subset(self.train_dataset, [0])
-            # self.val_dataset = Subset(self.val_dataset, [0])
-
-            print(f"Initialized dataset for {self.dataset.side} arteries consisting of {len(self.dataset)} samples ({len(self.train_dataset)} train, {len(self.val_dataset)} val)")
-            
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset,
@@ -87,16 +80,17 @@ class XRayDataModule(pl.LightningDataModule):
                           )        
         
 
-def _get_dm(root_dir, Dataset):
+def _get_dm(train_root_dir, val_root_dir, Dataset):
     return XRayDataModule(
-        Dataset(root_dir=root_dir),
+        Dataset(root_dir=train_root_dir),
+        Dataset(root_dir=val_root_dir),
         **get_config()['data']
     )
     
 
-def get_dm_left(root_dir):
-    return _get_dm(root_dir, XRayDatasetLeft)
+def get_dm_left(train_root_dir, val_root_dir):
+    return _get_dm(train_root_dir, val_root_dir, XRayDatasetLeft)
 
 
-def get_dm_right(root_dir):
-    return _get_dm(root_dir, XRayDatasetRight)
+def get_dm_right(train_root_dir, val_root_dir):
+    return _get_dm(train_root_dir, val_root_dir, XRayDatasetRight)
