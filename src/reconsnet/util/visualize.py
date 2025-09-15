@@ -4,21 +4,21 @@ import numpy as np
 
 from matplotlib.widgets import Slider
 
-from ..data.postprocess import denoise_pcd
+from ..data.postprocess import denoise_voxels
+from ..util.metrics import confusion, chamfer_distance
 
 
 def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
     backprojection, gt = sample
 
-    pred = reconstruct(backprojection.unsqueeze(0)).squeeze()
+    pred = reconstruct(backprojection.unsqueeze(0))
     gt = gt.squeeze()
-    pred_np_raw = pred.cpu().numpy()
     gt_np = (gt.squeeze() > initial_threshold).cpu().numpy()
     gt_coords = np.argwhere(gt_np)
 
     threshold = initial_threshold
-    pred_np = (pred_np_raw > threshold)
-    pred_coords = denoise_pcd(np.argwhere(pred_np))
+    pred_bin = denoise_voxels((pred > threshold).float()).squeeze().cpu().numpy()
+    pred_coords = np.argwhere(pred_bin)
 
     fig = plt.figure(figsize=(10,6))
     ax = fig.add_subplot(111, projection='3d')
@@ -37,10 +37,19 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
 
     def update(val):
         th = slider.val
-        new_coords = denoise_pcd(np.argwhere(pred_np_raw > th))
+        pred_bin_tensor = denoise_voxels((pred > th).float()).squeeze() 
+        pred_bin = pred_bin_tensor.cpu().numpy()
+        new_coords = np.argwhere(pred_bin)
 
         scat_pred._offsets3d = (new_coords[:,0], new_coords[:,1], new_coords[:,2])
         fig.canvas.draw_idle()
+        
+        print(
+            confusion(pred, gt.unsqueeze(0).unsqueeze(0), th),
+            chamfer_distance(pred, gt.unsqueeze(0).unsqueeze(0), th)
+        )
+    
 
     slider.on_changed(update)
-    plt.show()
+    # plt.show()
+    return pred_bin

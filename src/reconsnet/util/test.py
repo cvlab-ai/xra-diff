@@ -6,7 +6,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .metrics import dice, confusion
+from .metrics import confusion, chamfer_distance
 from ..config import get_config
 from ..data.preprocess import preprocess
 from .camera import build_camera_model
@@ -23,6 +23,7 @@ def synthetic_test(
     model, 
     ds, 
     csv_output_path,
+    reconstruct
 ):
     def make_test(reconstruct):
         df = []
@@ -41,18 +42,15 @@ def synthetic_test(
             for threshold in np.linspace(**THRESHOLD_RANGE):
                 entry = {
                     **entry,
-                    **confusion(hat, gt, threshold, prefix="refined_")
+                    **confusion(hat, gt, threshold, prefix="refined_"),
+                    **chamfer_distance(hat, gt, threshold, prefix="refined_"),
+                    **confusion(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_"),
+                    **chamfer_distance(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_")
                 }
-                entry = {
-                    **entry,
-                    **confusion(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_")
-                }   
-
-                                   
+               
             df.append(pd.DataFrame([entry]))
         return pd.concat(df)
-
-    make_test(lambda x: model.fast_reconstruct(x, num_inference_steps=10, guidance=True)).to_csv(csv_output_path)
+    make_test(reconstruct).to_csv(csv_output_path)
 
 
 def clinical_test(
