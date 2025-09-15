@@ -20,8 +20,7 @@ XRAY0_PARAMS_PATH="data/params0.json"
 XRAY0_IMAGE_PATH="data/xray0.png"
 XRAY1_PARAMS_PATH="data/params1.json"
 XRAY1_IMAGE_PATH="data/xray1.png"
-CHECKPOINT_PATH="checkpoints/diffusion_right-epoch-epoch=439-v1.ckpt"
-# CHECKPOINT_PATH="vanilla-759.ckpt"
+CHECKPOINT_PATH="better-backproj-epoch200.ckpt"
 SAMPLING_STEPS=10
 
 
@@ -64,14 +63,12 @@ def make_confusion_overlay(pred, gt, threshold=0.6,
     fp = (pred_bin == 1) & (gt_bin == 0)
     fn = (pred_bin == 0) & (gt_bin == 1)
     tn = (pred_bin == 0) & (gt_bin == 0)
-
     overlay[tp] = color_tp
     overlay[fp] = color_fp
     overlay[fn] = color_fn
     overlay[tn] = color_tn
 
     return overlay
-
 
 
 def main():    
@@ -90,14 +87,14 @@ def main():
     ds_sample = ds_right[0][0][0]
     
     backproj = backproj.to(model.device)
-    pred_vox = visualize(lambda x: model.fast_reconstruct(x, SAMPLING_STEPS), (backproj, torch.zeros_like(backproj, device=model.device)))
+    pred_vox = visualize(lambda x: model.fast_reconstruct(x, SAMPLING_STEPS), (backproj, backproj))
     
     camera_grid_size = [60, 60, 60]
     trf0 = xray_to_camera_model(xray0, grid_size=camera_grid_size, grid_spacing=ASSUMED_GRID_SPACING * 128 / 60)
     trf1 = xray_to_camera_model(xray1, grid_size=camera_grid_size, grid_spacing=ASSUMED_GRID_SPACING * 128 / 60)
     
-    pred0 = trf0(pred_vox.detach().cpu().numpy())[0]
-    pred1 = trf1(pred_vox.detach().cpu().numpy())[0]
+    pred0 = trf0(pred_vox)[0]
+    pred1 = trf1(pred_vox)[0]
     
     _, axes = plt.subplots(2, 1)
  

@@ -12,7 +12,7 @@ uv pip install -e .
 # Preparing data
 
 ```
-uv run scripts/prepare_data.py
+uv run scripts/dataset/prepare_data.py
 ```
 
 # Scripts

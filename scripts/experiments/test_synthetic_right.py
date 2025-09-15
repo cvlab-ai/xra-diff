@@ -8,18 +8,15 @@ from reconsnet.data.dataset import XRayDatasetRight
 from torch.utils.data import Subset
 
 
-CHECKPOINT_PATH = "checkpoints/diffusion_right-epoch-epoch=259-v2.ckpt"
+CHECKPOINT_PATH = "better-backproj.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections"
 RESULTS_PATH = "data/synthetic_right.csv"
+MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)
+RECONSTRUCT = lambda x: MODEL.fast_reconstruct(x, num_inference_steps=10, guidance=True)
 
 synthetic_test(
-    DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4),
+    model=MODEL,
     ds=Subset(XRayDatasetRight(root_dir=DATA_PATH), [0, 1, 2, 3]),
-    csv_output_path=RESULTS_PATH
+    csv_output_path=RESULTS_PATH,
+    reconstruct=RECONSTRUCT
 )
-
-# synthetic_test(
-#     DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4),
-#     ds=XRayDatasetRight(root_dir=DATA_PATH),
-#     csv_output_path=RESULTS_PATH
-# )

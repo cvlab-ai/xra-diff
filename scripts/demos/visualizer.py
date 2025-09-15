@@ -1,5 +1,6 @@
 import argparse
 import matplotlib
+import matplotlib.pyplot as plt
 
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetRight
@@ -31,3 +32,4 @@ visualize(
     lambda x: recons_fun(x, not args.no_guidance),
     sample
 )
+plt.show()
