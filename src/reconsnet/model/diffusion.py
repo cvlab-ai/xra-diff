@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
+import torch.nn as nn
 
 from diffusers import UNet3DConditionModel, DDPMScheduler, DDIMScheduler
 from torchmetrics import PeakSignalNoiseRatio as PSNR
@@ -25,34 +26,42 @@ class DiffusionModule(pl.LightningModule):
         self.noise_scheduler = DDPMScheduler(
             **config['scheduler']
         )
+        self.bp_encoder = BackprojectionEncoder()
+        self.p0_encoder = ProjectionEncoder()
+        self.p1_encoder = ProjectionEncoder()
         self.guidance_scale = config['guidance']['scale']
         self.drop_proba = config['guidance']['drop_proba']
         self.psnr = PSNR()
         self.lr = lr
 
-    def forward(self, voxels, t, backprojection, drop_proba=0.0):
-        cond = torch.zeros_like(backprojection) if torch.rand(1).item() < drop_proba else backprojection
-        dummy = torch.zeros((voxels.shape[0], 1, 1024), device=self.device)
+    def forward(self, voxels, t, backprojection, projection0, projection1, drop_proba=0.0):
+        rand = torch.rand(1, device=self.device).item()
+        cond = torch.zeros_like(backprojection, device=self.device) if rand < drop_proba else backprojection
+        bp_feat = self.bp_encoder(cond)
+        p0_feat = self.p0_encoder(torch.zeros_like(projection0, device=self.device) if rand < drop_proba else projection0)
+        p1_feat = self.p1_encoder(torch.zeros_like(projection1, device=self.device) if rand < drop_proba else projection1)
+        feat = bp_feat + p0_feat + p1_feat
         inp = torch.cat([voxels, cond], dim=1)
-        return self.model(inp, t, dummy).sample
+        return self.model(inp, t, feat).sample
     
-    def guided_forward(self, voxels, t, backprojection):
-        cond = self(voxels, t, backprojection, drop_proba=0.0)
-        uncond = self(voxels, t, backprojection, drop_proba=1.0)
+    def guided_forward(self, voxels, t, backprojection, p0, p1):
+        cond = self(voxels, t, backprojection, p0, p1, drop_proba=0.0)
+        uncond = self(voxels, t, backprojection, p0, p1, drop_proba=1.0)
         return uncond + (cond - uncond) * self.guidance_scale
 
     def step(self, batch, log_prefix=""):
-        x, y = batch
-        assert x.dim()==5 and y.dim()==5 and x.shape==y.shape, f"Got x {x.shape}, y {y.shape}"
+        backprojection, gt, p0, p1 = batch
+        p0 = p0.to(self.device)
+        p1 = p1.to(self.device)
 
-        noise = torch.randn_like(y)
+        noise = torch.randn_like(gt, device=self.device)
         timesteps = torch.randint(
             0, 
-            self.noise_scheduler.config.num_train_timesteps, (y.shape[0],), 
+            self.noise_scheduler.config.num_train_timesteps, (gt.shape[0],), 
             device=self.device
         ).long()
-        noisy_y = self.noise_scheduler.add_noise(y, noise, timesteps)
-        noise_pred = self(noisy_y, timesteps, x, drop_proba=self.drop_proba)
+        noisy_y = self.noise_scheduler.add_noise(gt, noise, timesteps)
+        noise_pred = self(noisy_y, timesteps, backprojection, p0, p1, drop_proba=self.drop_proba)
     
         loss = F.mse_loss(noise_pred, noise)
         psnr_value = self.psnr(noise_pred, noise)
@@ -76,10 +85,12 @@ class DiffusionModule(pl.LightningModule):
         if self.current_epoch % 10: return
         val_loader = self.trainer.datamodule.val_dataloader()
         batch = next(iter(val_loader))
-        x, y = batch
+        x, y, p0, p1 = batch
         x = x.to(self.device)
         y = y.to(self.device)  
-        sampled_voxels = self.reconstruct(x)
+        p0 = p0.to(self.device)
+        p1 = p1.to(self.device)
+        sampled_voxels = self.reconstruct(x, p0, p1)
 
         def log_sample(ix, threshold=0.5):
             voxels = sampled_voxels[ix][0]
@@ -130,7 +141,7 @@ class DiffusionModule(pl.LightningModule):
             log_sample(ix, thr)
 
     @torch.no_grad
-    def reconstruct(self, backprojection, guidance=True):
+    def reconstruct(self, backprojection, p0, p1, guidance=True):
         self.eval()
         num_samples = backprojection.shape[0]
         device = self.device
@@ -139,14 +150,14 @@ class DiffusionModule(pl.LightningModule):
         for t in tqdm(timesteps):
             t_tensor = torch.full((num_samples,), t, device=device, dtype=torch.long)
             if guidance:
-                noise_pred = self.guided_forward(x, t_tensor, backprojection)
+                noise_pred = self.guided_forward(x, t_tensor, backprojection, p0, p1)
             else:
-                noise_pred = self(x, t_tensor, backprojection)            
+                noise_pred = self(x, t_tensor, backprojection, p0, p1)            
             x = self.noise_scheduler.step(noise_pred, t, x).prev_sample
         return x
 
     @torch.no_grad()
-    def fast_reconstruct(self, backprojection, num_inference_steps=50, guidance=True):
+    def fast_reconstruct(self, backprojection, p0, p1, num_inference_steps=50, guidance=True):
         self.eval()
         num_samples = backprojection.shape[0]
         device = self.device
@@ -164,8 +175,52 @@ class DiffusionModule(pl.LightningModule):
         for t in tqdm(scheduler.timesteps):
             t_tensor = torch.full((num_samples,), t, device=device, dtype=torch.long)
             if guidance:
-                noise_pred = self.guided_forward(x, t_tensor, backprojection)
+                noise_pred = self.guided_forward(x, t_tensor, backprojection, p0, p1)
             else:
-                noise_pred = self(x, t_tensor, backprojection)
+                noise_pred = self(x, t_tensor, backprojection, p0, p1)
             x = scheduler.step(noise_pred, t, x).prev_sample
+        return x
+
+
+class BackprojectionEncoder(nn.Module):
+    def __init__(self, in_channels=1, hidden_channels=64, out_features=1024):
+        super().__init__()
+        self.conv1 = nn.Conv3d(in_channels, hidden_channels, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv3d(hidden_channels, hidden_channels, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv3d(hidden_channels, hidden_channels, kernel_size=3, padding=1)
+        self.pool = nn.AdaptiveAvgPool3d(1)
+        self.fc = nn.Linear(hidden_channels, out_features)
+        self.norm1 = nn.BatchNorm3d(hidden_channels)
+        self.norm2 = nn.BatchNorm3d(hidden_channels)
+        self.activation = nn.GELU()
+
+    def forward(self, x):
+        x = self.activation(self.norm1(self.conv1(x)))
+        x = self.activation(self.norm2(self.conv2(x)))
+        x = self.conv3(x)
+        x = self.pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        x = x.unsqueeze(1)
+        return x
+
+
+class ProjectionEncoder(nn.Module):
+    def __init__(self, in_channels=1, hidden_channels=64, out_features=1024):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, hidden_channels, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(hidden_channels, hidden_channels, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(hidden_channels, hidden_channels, kernel_size=3, padding=1)
+        self.pool = nn.AdaptiveAvgPool2d(1) 
+        self.fc = nn.Linear(hidden_channels, out_features)
+        self.activation = nn.GELU()
+
+    def forward(self, x):
+        x = self.activation(self.conv1(x))
+        x = self.activation(self.conv2(x))
+        x = self.activation(self.conv3(x))
+        x = self.pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        x = x.unsqueeze(1)
         return x

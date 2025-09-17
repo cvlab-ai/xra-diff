@@ -25,7 +25,8 @@ def default_transform(projections, gt):
     preprocessed = F.interpolate(preprocessed, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
     
     def xray_to_tensor(x):
-        return torch.from_numpy(x.img.asarray()).unsqueeze(0)
+        tens = torch.from_numpy(x.img.asarray()).unsqueeze(0)
+        return (tens - tens.min()) / (tens.max() - tens.min() + 1e-8)
         
     return preprocessed.squeeze(0), gt.squeeze(0), xray_to_tensor(projections[0]), xray_to_tensor(projections[1])
 

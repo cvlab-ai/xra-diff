@@ -13,7 +13,7 @@ def denoise_pcd(pcd, radius=2, min_neighbors=5):
     return pcd[mask]
 
 
-def denoise_voxels(voxel_grid, min_neighbors=5):
+def denoise_voxels(voxel_grid, min_neighbors=10):
     kernel = torch.ones((1,1,3,3,3), device=voxel_grid.device)
     kernel[0,0,1,1,1] = 0
 

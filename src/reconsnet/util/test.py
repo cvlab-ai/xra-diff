@@ -14,10 +14,11 @@ from .camera import build_camera_model
 
 ASSUMED_GRID_SPACING = 0.8
 THRESHOLD_RANGE = {
-    "start": 0.1,
+    "start": 0.0,
     "stop": 1.0,
-    "num": 20
+    "num": 50
 }
+SAVE_EVERY=10
 
 def synthetic_test(
     model, 
@@ -28,11 +29,13 @@ def synthetic_test(
     def make_test(reconstruct):
         df = []
         for i in tqdm(range(len(ds))):
-            backprojection, gt = ds[i]
+            backprojection, gt, p0, p1 = ds[i]
             backprojection = backprojection.to(model.device)
+            p0 = p0.to(model.device)
+            p1 = p1.to(model.device)
             gt = gt.to(model.device).unsqueeze(0) # add batch dim
             before = time.time()
-            hat = reconstruct(backprojection.unsqueeze(0))
+            hat = reconstruct((backprojection.unsqueeze(0), p0.unsqueeze(0), p1.unsqueeze(0)))
                         
             hat = (hat - hat.min()) / (hat.max() - hat.min())
             elapsed = time.time() - before
@@ -47,8 +50,9 @@ def synthetic_test(
                     **confusion(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_"),
                     **chamfer_distance(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_")
                 }
-               
+            
             df.append(pd.DataFrame([entry]))
+            if i % SAVE_EVERY == 0: pd.concat(df).to_csv(csv_output_path)
         return pd.concat(df)
     make_test(reconstruct).to_csv(csv_output_path)
 

@@ -9,9 +9,9 @@ from ..util.metrics import confusion, chamfer_distance
 
 
 def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
-    backprojection, gt = sample
+    backprojection, gt, p0, p1 = sample
 
-    pred = reconstruct(backprojection.unsqueeze(0))
+    pred = reconstruct((backprojection.unsqueeze(0), p0.unsqueeze(0), p1.unsqueeze(0)))
     gt = gt.squeeze()
     gt_np = (gt.squeeze() > initial_threshold).cpu().numpy()
     gt_coords = np.argwhere(gt_np)
@@ -51,5 +51,5 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
     
 
     slider.on_changed(update)
-    # plt.show()
+    plt.show()
     return pred_bin
