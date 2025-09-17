@@ -21,9 +21,8 @@ def _downsample(volume, tgt=(60,60,60)):
     return volume_down
 
 
-def confusion(pred, target, threshold, prefix=""):
-
-    
+def confusion(pred, target, threshold, prefix="", suffix=None):
+    if suffix is None: suffix = threshold
     pred_down = _downsample(pred)
     target_down = _downsample(target)
     
@@ -36,15 +35,17 @@ def confusion(pred, target, threshold, prefix=""):
     tn = ((1 - pred_bin) * (1 - gt_bin)).sum().item()
     dice3d = (2 * tp) / (2 * tp + fp + fn + 1e-8)
     return {
-        f"{prefix}dice3d_{threshold}": dice3d,
-        f"{prefix}TP_{threshold}": tp, 
-        f"{prefix}FP_{threshold}": fp, 
-        f"{prefix}FN_{threshold}": fn, 
-        f"{prefix}TN_{threshold}": tn
+        f"{prefix}dice3d_{suffix}": dice3d,
+        f"{prefix}TP_{suffix}": tp, 
+        f"{prefix}FP_{suffix}": fp, 
+        f"{prefix}FN_{suffix}": fn, 
+        f"{prefix}TN_{suffix}": tn
     }
 
 
-def chamfer_distance(pred, target, threshold, prefix="", to_mm=1.7):
+def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.7):
+    if suffix is None: suffix = threshold
+
     pred_down = _downsample(pred)
     target_down = _downsample(target)
     
@@ -56,22 +57,33 @@ def chamfer_distance(pred, target, threshold, prefix="", to_mm=1.7):
     gt_points = gt_bin.nonzero(as_tuple=False).float()
     
     if pred_points.shape[0] == 0 or gt_points.shape[0] == 0:
-        return {f"{prefix}chamfer_{threshold}": 1e7}
+        return {f"{prefix}chamfer_{suffix}": 1e7}
 
     
     dist_matrix = torch.cdist(pred_points, gt_points, p=2)
 
     min_dist_1_to_2 = torch.min(dist_matrix, dim=1).values * to_mm
     min_dist_2_to_1 = torch.min(dist_matrix, dim=0).values * to_mm
-    min_dist_1_to_2 = min_dist_1_to_2**2
-    min_dist_2_to_1 = min_dist_2_to_1**2
     dist_1 = torch.mean(min_dist_1_to_2, dim=0)
     dist_2 = torch.mean(min_dist_2_to_1, dim=0)
     chamfer_dist = (dist_1 + dist_2) / 2.0
 
     return {
-        f"{prefix}chamfer_{threshold}": chamfer_dist.item()
+        f"{prefix}chamfer_{suffix}": chamfer_dist.item()
     }
+
+
+def interpret_frac(pred, backproj, threshold=0.2):
+    pred_bin = (pred >= threshold)
+    backproj_bin = backproj.bool()
+
+    intersection = (pred_bin & backproj_bin).sum().item()
+    total_pred = pred_bin.sum().item()
+
+    if total_pred == 0:
+        return 0.0
+
+    return intersection / total_pred
 
 
 def lumen_diameter_error(pred, target):

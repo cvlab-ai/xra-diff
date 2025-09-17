@@ -4,7 +4,7 @@ import numpy as np
 
 from matplotlib.widgets import Slider
 
-from ..data.postprocess import denoise_voxels
+from ..data.postprocess import denoise_voxels, percentile_threshold
 from ..util.metrics import confusion, chamfer_distance
 
 
@@ -15,8 +15,10 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
     gt = gt.squeeze()
     gt_np = (gt.squeeze() > initial_threshold).cpu().numpy()
     gt_coords = np.argwhere(gt_np)
+    bp_coords = np.argwhere((backprojection > 0.2).squeeze().cpu().numpy())
 
-    threshold = initial_threshold
+    threshold = percentile_threshold(pred)
+    
     pred_bin = denoise_voxels((pred > threshold).float()).squeeze().cpu().numpy()
     pred_coords = np.argwhere(pred_bin)
 
@@ -26,6 +28,7 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
 
     ax.scatter(gt_coords[:,0], gt_coords[:,1], gt_coords[:,2],
                          c='cyan', s=marker_size, alpha=0.7, label='GT')
+    ax.scatter(bp_coords[:, 0], bp_coords[:, 1], bp_coords[:, 2], alpha=0.5)
     scat_pred = ax.scatter(pred_coords[:,0], pred_coords[:,1], pred_coords[:,2],
                            c='orange', s=marker_size, alpha=0.7, label='Prediction')
 
@@ -51,5 +54,4 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
     
 
     slider.on_changed(update)
-    plt.show()
-    return pred_bin
+    return pred_bin, slider
