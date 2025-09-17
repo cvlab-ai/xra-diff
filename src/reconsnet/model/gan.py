@@ -18,8 +18,6 @@ from .blocks.discriminator import Discriminator
 from ..config import get_config
 from ..util.metrics import dice
 
-
-
 class GANModule(pl.LightningModule):
     def __init__(self, lr=1e-4):
         super().__init__()
@@ -35,7 +33,7 @@ class GANModule(pl.LightningModule):
         self.discriminator = Discriminator(device, 2)
 
     def training_step(self, batch):
-        volumes, gt = batch
+        volumes, gt, _, _ = batch
 
         optimizer_g, optimizer_d = self.optimizers()
         optimizer_g.zero_grad()
@@ -81,7 +79,7 @@ class GANModule(pl.LightningModule):
         self.untoggle_optimizer(optimizer_g)
 
     def validation_step(self, batch, batch_idx):
-        volumes, gt = batch
+        volumes, gt, _, _ = batch
         
         outputs = self.generator(volumes)
 
@@ -96,7 +94,7 @@ class GANModule(pl.LightningModule):
         if self.current_epoch % 10: return
         val_loader = self.trainer.datamodule.val_dataloader()
         batch = next(iter(val_loader))
-        x, y = batch
+        x, y, _, _ = batch
         x = x.to(self.device)
         y = y.to(self.device)  
         sampled_voxels = self.generator(x)

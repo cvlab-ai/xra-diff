@@ -5,6 +5,8 @@ from torch import nn
 from torch import cat
 
 from .cct_3d import CCT
+from ...util.coords import pad_pow2, crop_grid
+
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, batch_norm=True):
@@ -75,6 +77,7 @@ class Generator(nn.Module):
         self.sigmoid = nn.Sigmoid()
         
     def forward(self, x):
+        x = pad_pow2(x)
         conv1, x = self.down1(x)
         conv2, x = self.down2(x)
         conv3, x = self.down3(x)
@@ -93,4 +96,4 @@ class Generator(nn.Module):
         x = self.conv_class(x)
         out = self.sigmoid(x)
 
-        return out
+        return crop_grid(out)

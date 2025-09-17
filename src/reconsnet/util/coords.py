@@ -1,4 +1,7 @@
 import numpy as np
+import torch.nn.functional as F
+
+from ..config import get_config
 
 
 def pcd_to_voxel(pcd, grid_res, downscale=1, downscalez=1):
@@ -23,3 +26,14 @@ def compute_downscales(volume_shape, grid_res):
 def transpose(img):
     return np.flipud(np.transpose(img, (1, 0)))
     
+def pad_pow2(x, target_size=64):
+    d, h, w = x.shape[-3:]
+    pad_d = target_size - d
+    pad_h = target_size - h
+    pad_w = target_size - w
+    padding = (0, pad_w, 0, pad_h, 0, pad_d)
+    return F.pad(x, padding, mode="constant", value=0)
+
+def crop_grid(x):
+    grid_dim = get_config()['data']['grid_dim']    
+    return x[..., :grid_dim, :grid_dim, :grid_dim]    
