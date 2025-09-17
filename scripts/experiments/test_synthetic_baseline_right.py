@@ -1,22 +1,24 @@
 '''
 test on a synthesized dataset
 '''
+import torch.nn.functional as F
+
 from reconsnet.util.test import synthetic_test
-from reconsnet.model.diffusion import DiffusionModule
+from reconsnet.model.gan import GANModule
 from reconsnet.data.dataset import XRayDatasetRight
 
 from torch.utils.data import Subset
 
-
-CHECKPOINT_PATH = "stronger-conditioning.ckpt"
+CHECKPOINT_PATH = "baseline.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/val"
-RESULTS_PATH = "data/synthetic_right.csv"
-MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)
-RECONSTRUCT = lambda x: MODEL.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
+RESULTS_PATH = "data/synthetic_baseline_right.csv"
+MODEL = GANModule.load_from_checkpoint(CHECKPOINT_PATH)
+RECONSTRUCT = lambda x: F.sigmoid(MODEL.generator.forward(x[0]))
 
 synthetic_test(
     model=MODEL,
     ds=XRayDatasetRight(root_dir=DATA_PATH),
     csv_output_path=RESULTS_PATH,
-    reconstruct=RECONSTRUCT
+    reconstruct=RECONSTRUCT,
+    repeat_each=1
 )
