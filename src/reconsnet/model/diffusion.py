@@ -14,7 +14,7 @@ from ..util.metrics import dice
 
 
 class DiffusionModule(pl.LightningModule):
-    def __init__(self, lr):
+    def __init__(self, lr, guidance_scale_override=None):
         super().__init__()
         config = get_config()
         self.model = UNet3DConditionModel(
@@ -29,7 +29,10 @@ class DiffusionModule(pl.LightningModule):
         self.bp_encoder = BackprojectionEncoder()
         self.p0_encoder = ProjectionEncoder()
         self.p1_encoder = ProjectionEncoder()
-        self.guidance_scale = config['guidance']['scale']
+        if guidance_scale_override is None:
+            self.guidance_scale = config['guidance']['scale']
+        else:
+            self.guidance_scale = guidance_scale_override
         self.drop_proba = config['guidance']['drop_proba']
         self.psnr = PSNR()
         self.lr = lr
