@@ -8,16 +8,16 @@ from ..data.postprocess import denoise_voxels, percentile_threshold
 from ..util.metrics import confusion, chamfer_distance
 
 
-def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
+def visualize(reconstruct, sample, initial_threshold=None, marker_size=2, gt_label="GT"):
     backprojection, gt, p0, p1 = sample
 
     pred = reconstruct((backprojection.unsqueeze(0), p0.unsqueeze(0), p1.unsqueeze(0)))
     gt = gt.squeeze()
-    gt_np = (gt.squeeze() > initial_threshold).cpu().numpy()
+    gt_np = (gt.squeeze() > 0).cpu().numpy()
     gt_coords = np.argwhere(gt_np)
     bp_coords = np.argwhere((backprojection > 0.2).squeeze().cpu().numpy())
 
-    threshold = percentile_threshold(pred)
+    threshold = percentile_threshold(pred) if initial_threshold is None else initial_threshold
     
     pred_bin = denoise_voxels((pred > threshold).float()).squeeze().cpu().numpy()
     pred_coords = np.argwhere(pred_bin)
@@ -27,7 +27,7 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
     plt.subplots_adjust(bottom=0.2)
 
     ax.scatter(gt_coords[:,0], gt_coords[:,1], gt_coords[:,2],
-                         c='cyan', s=marker_size, alpha=0.7, label='GT')
+                         c='cyan', s=marker_size, alpha=0.7, label=gt_label)
     ax.scatter(bp_coords[:, 0], bp_coords[:, 1], bp_coords[:, 2], alpha=0.5)
     scat_pred = ax.scatter(pred_coords[:,0], pred_coords[:,1], pred_coords[:,2],
                            c='orange', s=marker_size, alpha=0.7, label='Prediction')
@@ -36,7 +36,7 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
     ax.legend(loc='upper right')
 
     ax_slider = plt.axes([0.2, 0.05, 0.65, 0.03])
-    slider = Slider(ax_slider, 'Threshold', 0.0, 1.0, valinit=initial_threshold)
+    slider = Slider(ax_slider, 'Threshold', 0.0, 1.0, valinit=threshold.detach().cpu().numpy())
 
     def update(val):
         th = slider.val
@@ -55,3 +55,26 @@ def visualize(reconstruct, sample, initial_threshold=0.5, marker_size=2):
 
     slider.on_changed(update)
     return pred_bin, slider
+
+
+def make_confusion_overlay(pred, gt, threshold=0.6,
+                           color_tp=(0, 255, 0),
+                           color_fp=(255, 0, 0),
+                           color_fn=(0, 0, 255),
+                           color_tn=(0, 0, 0)):
+    h, w = pred.shape
+    overlay = np.zeros((h, w, 3), dtype=np.uint8)
+
+    pred_bin = (pred > threshold).astype(np.uint8)
+    gt_bin   = (gt   > threshold).astype(np.uint8)
+
+    tp = (pred_bin == 1) & (gt_bin == 1)
+    fp = (pred_bin == 1) & (gt_bin == 0)
+    fn = (pred_bin == 0) & (gt_bin == 1)
+    tn = (pred_bin == 0) & (gt_bin == 0)
+    overlay[tp] = color_tp
+    overlay[fp] = color_fp
+    overlay[fn] = color_fn
+    overlay[tn] = color_tn
+
+    return overlay

@@ -13,7 +13,7 @@ CHECKPOINT_PATH = "baseline.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/val"
 RESULTS_PATH = "data/synthetic_baseline_right.csv"
 MODEL = GANModule.load_from_checkpoint(CHECKPOINT_PATH)
-RECONSTRUCT = lambda x: F.sigmoid(MODEL.generator.forward(x[0]))
+RECONSTRUCT = lambda x: MODEL.generator.forward(x[0])
 
 synthetic_test(
     model=MODEL,

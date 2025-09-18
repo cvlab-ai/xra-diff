@@ -13,15 +13,31 @@ uv pip install -e .
 
 ```
 uv run scripts/dataset/prepare_data.py
+uv run scrpits/dataset/make_split.py
 ```
 
 # Scripts
 
-Under script directory:
-- `prepare_data.py` - generate projections for training using ImageCAS
-- `image2cas.sh` - unpack ImageCAS
-- `test_synthetic_right.py` - test a model on the synthetic dataset (right arteries)
-- `train_diffusion_right.py` - train diffusion model for right arteries
-- `train_diffusion_left.py` - train diffusion model for left arteries
-- `visualizer.py` - visualize model output for a given sample
+Under `scripts` directory:
+- `experiments/` - scripts for running experiments
+    - `test_synthetic_right.py` - test a model on the synthetic dataset (right arteries)
+    - `test_synthetic_baseline_right.py` - test a baseline on the synthetic dataset (right arteries)
+    - `test_synthetic_adaptive_right.py` - test a model on the synthetic dataset with adaptive threshold (right arteries)
+
+- `demos/` - scripts for qualitative evaluation
+    - `synthetic_visualizer.py` - synthetic data visualizer (see --help)
+    - `clinical_visualizer.py` - clinical data visualizer (see --help)
+- `dataset/` - dataset preparation
+    - `image2cas.sh` - extraction of ImageCAS 
+    - `prepare_data.py` - simulates the image acquisition using cone beam geometry, generates synthetic dataset
+    - `make_split.py` - splits the above dataset to train and valitation splits
+- `training/` - scripts for training models
+    - `train_diffusion_right.py` - train diffusion model for right arteries
+    - `train_diffusion_left.py` - train diffusion model for left arteries
+    - `train_gan_right.py` - train gan model for right arteries (baseline)
+    - `train_gan_left.py` - train gan model for left arteries (baseline)
+
+# Notebooks
+
+Under `notebooks` directory
 

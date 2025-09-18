@@ -2,11 +2,15 @@ import torch
 import pytorch_lightning as pl
 import joblib
 import torch.nn.functional as F
+import json
+import numpy as np
 
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader, random_split
 from .preprocess import preprocess
 from ..config import get_config
+from .data import XRay
+from PIL import Image
 
 
 def default_transform(projections, gt):
@@ -17,18 +21,24 @@ def default_transform(projections, gt):
         [128, 128, 128] # OG grid
     )
 
-    gt = torch.from_numpy(gt).float().unsqueeze(0).unsqueeze(0)
-    gt = F.interpolate(gt, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
-    
+    if gt is not None:
+        gt = torch.from_numpy(gt).float().unsqueeze(0).unsqueeze(0)
+        gt = F.interpolate(gt, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
+        gt = gt.squeeze(0)
+        
     preprocessed = (preprocessed - preprocessed.min()) / (preprocessed.max() - preprocessed.min() + 1e-8)
     preprocessed = torch.from_numpy(preprocessed).float().unsqueeze(0).unsqueeze(0)
     preprocessed = F.interpolate(preprocessed, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
     
     def xray_to_tensor(x):
-        tens = torch.from_numpy(x.img.asarray()).unsqueeze(0)
+        if isinstance(x.img, torch.Tensor):
+            tens = x.img
+        else:
+            tens = torch.from_numpy(x.img.asarray()).unsqueeze(0)
+
         return (tens - tens.min()) / (tens.max() - tens.min() + 1e-8)
         
-    return preprocessed.squeeze(0), gt.squeeze(0), xray_to_tensor(projections[0]), xray_to_tensor(projections[1])
+    return preprocessed.squeeze(0), gt, xray_to_tensor(projections[0]), xray_to_tensor(projections[1])
 
 class XRayDataset(Dataset):
     def __init__(self, root_dir, side, transform=default_transform):
@@ -95,3 +105,21 @@ def get_dm_left(train_root_dir, val_root_dir):
 
 def get_dm_right(train_root_dir, val_root_dir):
     return _get_dm(train_root_dir, val_root_dir, XRayDatasetRight)
+
+
+def load_clinical_sample(params_path, image_path) -> XRay:
+    with open(params_path, 'r') as f:
+        params = json.load(f)
+    
+    img = np.array(Image.open(image_path).convert("F"))
+    img = np.flipud(img).T.copy()
+    img_tensor = torch.tensor(img, dtype=torch.float32)
+    
+    sid = float(params['sid'])
+    sod = float(params['sod'])
+    alpha = np.deg2rad(float(params['alpha']))
+    beta = np.deg2rad(float(params['beta']))
+    spacing = float(params['spacing'])
+    size = img.shape
+    return XRay(img=img_tensor, sid=sid, sod=sod, alpha=alpha, beta=beta, spacing=spacing, size=size)
+

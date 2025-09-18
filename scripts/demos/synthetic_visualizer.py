@@ -9,7 +9,7 @@ from reconsnet.util.visualize import visualize
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint_path', type=str, help='Model weights path', default="vanilla-200.ckpt")
+parser.add_argument('--checkpoint_path', type=str, help='Model weights path', default="stronger-conditioning.ckpt")
 parser.add_argument('--baseline_checkpoint_path', type=str, help='Model weights path', default="baseline.ckpt")
 parser.add_argument('--sample_idx', type=int, help='Which sample from dataset to use as input data', default=0)
 parser.add_argument('--dataset_path', type=str, help='ImageCAS dataset path', default="/home/shared/imagecas/projections_split/val")

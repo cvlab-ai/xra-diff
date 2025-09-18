@@ -2,6 +2,7 @@ import numpy as np
 import torch.nn.functional as F
 
 from ..config import get_config
+from reconsnet.data.preprocess import preprocess, xray_to_camera_model, ASSUMED_GRID_SPACING
 
 
 def pcd_to_voxel(pcd, grid_res, downscale=1, downscalez=1):
@@ -37,3 +38,12 @@ def pad_pow2(x, target_size=64):
 def crop_grid(x):
     grid_dim = get_config()['data']['grid_dim']    
     return x[..., :grid_dim, :grid_dim, :grid_dim]    
+
+
+def reproject(vox, xray0, xray1, camera_grid_size):
+    '''
+    reprojects "vox" back on xray0 and xray1 planes
+    '''
+    trf0 = xray_to_camera_model(xray0, grid_size=camera_grid_size, grid_spacing=ASSUMED_GRID_SPACING * 128 / camera_grid_size[0])
+    trf1 = xray_to_camera_model(xray1, grid_size=camera_grid_size, grid_spacing=ASSUMED_GRID_SPACING * 128 / camera_grid_size[0])
+    return trf0(vox)[0], trf1(vox)[0]
