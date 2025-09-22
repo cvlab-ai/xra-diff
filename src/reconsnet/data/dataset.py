@@ -193,4 +193,4 @@ class ClinicalDataset(Dataset):
         sample0, sample1 = self.pairs[idx]
         xray0 = load_clinical_sample(sample0["params"], sample0["mask"], True)
         xray1 = load_clinical_sample(sample1["params"], sample1["mask"], True)
-        return default_transform([xray0, xray1], None)
+        return default_transform([xray0, xray1], None), xray0, xray1

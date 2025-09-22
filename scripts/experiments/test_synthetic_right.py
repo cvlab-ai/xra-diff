@@ -5,9 +5,6 @@ from reconsnet.util.test import synthetic_test
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetRight
 
-from torch.utils.data import Subset
-
-
 CHECKPOINT_PATH = "stronger-conditioning.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/val"
 RESULTS_PATH = "data/synthetic_right.csv"

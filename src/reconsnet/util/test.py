@@ -7,10 +7,8 @@ import numpy as np
 from tqdm import tqdm
 
 from .metrics import confusion, chamfer_distance, interpret_frac, downsample
-from ..config import get_config
-from ..data.preprocess import preprocess
-from ..data.postprocess import percentile_threshold
-from .camera import build_camera_model
+from ..data.postprocess import percentile_threshold, denoise_voxels
+from ..util.coords import reproject
 from torchmetrics import PeakSignalNoiseRatio as PSNR
 
 
@@ -128,47 +126,34 @@ def synthetic_test_adaptive(
 
 def clinical_test(
     model, 
-    xray_pairs,
-    csv_ddpm_output_path,
-    csv_ddim_output_path
+    ds, 
+    csv_output_path,
+    reconstruct,
+    repeat_each=3,
+    camera_grid_size = [60] * 3
 ):
-    grid_dim = get_config()['data']['grid_dim']
-    
-
     def make_test(reconstruct):
-        df = pd.DataFrame()
-        for (xray0, xray1) in tqdm(xray_pairs):
-            before = time.time()
-            
-            preprocessed = preprocess(
-                xray0,
-                xray1,
-                [128, 128, 128]
-            )
+        df = []
+        for i in tqdm(range(len(ds))):
+            for _ in range(repeat_each):
+                (backprojection, _, p0, p1), xray0, xray1 = ds[i]
+                backprojection = backprojection.to(model.device)
+                p0 = p0.to(model.device)
+                p1 = p1.to(model.device)
+                before = time.time()
+                hat = reconstruct((backprojection.unsqueeze(0), p0.unsqueeze(0).unsqueeze(0), p1.unsqueeze(0).unsqueeze(0)))
+                hat = (hat - hat.min()) / (hat.max() - hat.min())
+                elapsed = time.time() - before
+                entry = {
+                    "elapsed": elapsed
+                }
+                threshold = percentile_threshold(hat)
+                hat_bin = denoise_voxels((hat > threshold).float()).squeeze().cpu().numpy()
 
-            preprocessed = (preprocessed - preprocessed.min()) / (preprocessed.max() - preprocessed.min() + 1e-8)
-            preprocessed = torch.from_numpy(preprocessed).float().unsqueeze(0).unsqueeze(0)
-            preprocessed = F.interpolate(preprocessed, size=(grid_dim, grid_dim, grid_dim), mode='trilinear', align_corners=False)
-
-            rec = reconstruct(preprocessed)
-            camera0 = xray_to_camera_model(xray0)
-            camera1 = xray_to_camera_model(xray1)
-            
-            projection0 = camera0(rec)[0]
-            projection1 = camera1(rec)[0]
-
-            # TODO: compute reconstruction errors (projection vs xray)
-            # recd0 = dice(projection0, xray0.image)
-            # recd1 = dice(projection1, xray1.image)
-            
-            elapsed = time.time() - before
-            df.add({
-                "elapsed": elapsed,
-                # "recd0": recd0,
-                # "recd1": recd1
-            })
-
-        return df
-    
-    make_test(model.reconstruct).to_csv(csv_ddpm_output_path)
-    make_test(model.fast_reconstruct).to_csv(csv_ddim_output_path)
+                backprojection = backprojection.unsqueeze(0)
+                pred0, pred1 = reproject(hat_bin, xray0, xray1, camera_grid_size)
+                # TODO: add metrics
+                df.append(pd.DataFrame([entry]))
+            if i % SAVE_EVERY == 0: pd.concat(df).to_csv(csv_output_path)
+        return pd.concat(df)
+    make_test(reconstruct).to_csv(csv_output_path)
