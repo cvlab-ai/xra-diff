@@ -134,17 +134,6 @@ def clinical_test(
 ):
     grid_dim = get_config()['data']['grid_dim']
     
-    def xray_to_camera_model(xray):
-        return build_camera_model(
-            xray.alpha,
-            xray.beta,
-            xray.sid,
-            xray.sod,
-            ASSUMED_GRID_SPACING,
-            [128, 128, 128],
-            xray.spacing,
-            xray.size
-    )    
 
     def make_test(reconstruct):
         df = pd.DataFrame()

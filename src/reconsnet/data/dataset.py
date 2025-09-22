@@ -11,6 +11,7 @@ from .preprocess import preprocess
 from ..config import get_config
 from .data import XRay
 from PIL import Image
+from scipy.ndimage import shift, zoom
 
 
 def default_transform(projections, gt):
@@ -107,7 +108,9 @@ def get_dm_right(train_root_dir, val_root_dir):
     return _get_dm(train_root_dir, val_root_dir, XRayDatasetRight)
 
 
-def load_clinical_sample(params_path, image_path) -> XRay:
+def load_clinical_sample(params_path, image_path, dicom=False) -> XRay:
+    import ast
+    
     with open(params_path, 'r') as f:
         params = json.load(f)
     
@@ -115,11 +118,79 @@ def load_clinical_sample(params_path, image_path) -> XRay:
     img = np.flipud(img).T.copy()
     img_tensor = torch.tensor(img, dtype=torch.float32)
     
-    sid = float(params['sid'])
-    sod = float(params['sod'])
-    alpha = np.deg2rad(float(params['alpha']))
-    beta = np.deg2rad(float(params['beta']))
-    spacing = float(params['spacing'])
+    if dicom:
+        sid = float(params["(0018,1110)"]["value"])
+        sod = float(params["(0018,1111)"]["value"])
+        alpha = np.deg2rad(float(params['(0018,1510)']["value"]))
+        beta = np.deg2rad(float(params['(0018,1511)']["value"]))
+        spacing = float(ast.literal_eval(params["(0018,1164)"]["value"])[0])
+    else:
+        sid = float(params['sid'])
+        sod = float(params['sod'])
+        alpha = np.deg2rad(float(params['alpha']))
+        beta = np.deg2rad(float(params['beta']))
+        spacing = float(params['spacing'])
     size = img.shape
     return XRay(img=img_tensor, sid=sid, sod=sod, alpha=alpha, beta=beta, spacing=spacing, size=size)
 
+
+def random_move(img, translation_range):
+    arr = img.asarray()
+    ndim = arr.ndim
+    shifts = np.random.uniform(-translation_range, translation_range, size=ndim)
+    moved = shift(arr, shift=shifts, mode="reflect")
+    return img.space.element(moved)
+
+
+def random_scale(img, scaling_range):
+    arr = img.asarray()
+    factor = np.random.uniform(1 - scaling_range, 1 + scaling_range)
+    scaled = zoom(arr, zoom=factor, order=1, mode="reflect")
+
+    out = np.zeros_like(arr)
+    in_shape  = np.array(scaled.shape)
+    out_shape = np.array(arr.shape)
+
+    slices_in  = []
+    slices_out = []
+    for s_in, s_out in zip(in_shape, out_shape):
+        if s_in >= s_out:      # crop center
+            start_in = (s_in - s_out) // 2
+            slices_in.append(slice(start_in, start_in + s_out))
+            slices_out.append(slice(None))
+        else:                  # pad center
+            start_out = (s_out - s_in) // 2
+            slices_in.append(slice(None))
+            slices_out.append(slice(start_out, start_out + s_in))
+
+    out[tuple(slices_out)] = scaled[tuple(slices_in)]
+    return img.space.element(out)
+
+
+class ClinicalDataset(Dataset):
+    def __init__(self, root_dir):
+        """
+        Args:
+            root_dir (str or Path): folder containing params*.json and mask*.png
+            transform (callable, optional): transform for the image/mask pair
+            mask_transform (callable, optional): transform just for mask if different
+        """
+        self.root = Path(root_dir)
+        self.pairs = []
+        
+        for sub in sorted(self.root.iterdir(), key=lambda p: p.name):
+            self.pairs.append(
+                (
+                    { "params": sub / "params0.json", "mask": sub / "mask0.png"},
+                    { "params": sub / "params1.json", "mask": sub / "mask1.png"},
+                )
+            )
+
+    def __len__(self):
+        return len(self.pairs)
+
+    def __getitem__(self, idx):
+        sample0, sample1 = self.pairs[idx]
+        xray0 = load_clinical_sample(sample0["params"], sample0["mask"], True)
+        xray1 = load_clinical_sample(sample1["params"], sample1["mask"], True)
+        return default_transform([xray0, xray1], None)
