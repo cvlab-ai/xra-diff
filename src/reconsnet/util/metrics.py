@@ -1,8 +1,6 @@
 import torch
 import torch.nn.functional as F
 
-from scipy.spatial import cKDTree
-
 from ..data.postprocess import denoise_voxels
 
 
@@ -16,24 +14,33 @@ def dice(pred, target, threshold=0.5, eps=1e-8):
     return dice
 
 
-def _downsample(volume, tgt=(60,60,60)):
-    volume_down = F.interpolate(volume.float(), size=tgt, mode="trilinear", align_corners=False)
-    return volume_down
+def downsample(volume, tgt=(60,60,60)):
+    _, _, d, h, w = volume.shape
+    td, th, tw = tgt
 
+    kd, kh, kw = d // td, h // th, w // tw
+    sd, sh, sw = kd, kh, kw
+
+    volume_down = F.max_pool3d(volume.float(), 
+                               kernel_size=(kd, kh, kw),
+                               stride=(sd, sh, sw),
+                               ceil_mode=False)
+    return volume_down
+    
 
 def confusion(pred, target, threshold, prefix="", suffix=None):
     if suffix is None: suffix = threshold
-    pred_down = _downsample(pred)
-    target_down = _downsample(target)
+   
     
-    pred_bin = (pred_down > threshold).float()
+    pred_bin = (pred > threshold).float()
     pred_bin = denoise_voxels(pred_bin)
-    gt_bin = (target_down > 0).float()
+    gt_bin = (target > 0).float()
     tp = (pred_bin * gt_bin).sum().item()
     fp = (pred_bin * (1 - gt_bin)).sum().item()
     fn = ((1 - pred_bin) * gt_bin).sum().item()
     tn = ((1 - pred_bin) * (1 - gt_bin)).sum().item()
     dice3d = (2 * tp) / (2 * tp + fp + fn + 1e-8)
+    
     return {
         f"{prefix}dice3d_{suffix}": dice3d,
         f"{prefix}TP_{suffix}": tp, 
@@ -46,8 +53,8 @@ def confusion(pred, target, threshold, prefix="", suffix=None):
 def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.7):
     if suffix is None: suffix = threshold
 
-    pred_down = _downsample(pred)
-    target_down = _downsample(target)
+    pred_down = pred
+    target_down = target
     
     pred_bin = (pred_down > threshold).float()
     pred_bin = denoise_voxels(pred_bin)
@@ -82,7 +89,6 @@ def interpret_frac(pred, backproj, threshold=0.2):
 
     if total_pred == 0:
         return 0.0
-
     return intersection / total_pred
 
 

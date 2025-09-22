@@ -6,7 +6,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .metrics import confusion, chamfer_distance, interpret_frac
+from .metrics import confusion, chamfer_distance, interpret_frac, downsample
 from ..config import get_config
 from ..data.preprocess import preprocess
 from ..data.postprocess import percentile_threshold
@@ -21,9 +21,8 @@ THRESHOLD_RANGE = {
     "num": 50
 }
 SAVE_EVERY=10
-psnr = PSNR()
 
-
+@torch.no_grad()
 def synthetic_test(
     model, 
     ds, 
@@ -31,6 +30,7 @@ def synthetic_test(
     reconstruct,
     repeat_each=3
 ):
+    psnr = PSNR().to(model.device)
     def make_test(reconstruct):
         df = []
         for i in tqdm(range(len(ds))):
@@ -49,19 +49,24 @@ def synthetic_test(
                     "elapsed": elapsed
                 }
                 
+                backprojection = backprojection.unsqueeze(0)
+                hat_down = downsample(hat, tgt=(30, 30, 30))
+                gt_down = downsample(gt, tgt=(30, 30, 30))
+                bp_down = downsample(backprojection, tgt=(30, 30, 30))
+                
                 for threshold in np.linspace(**THRESHOLD_RANGE):
                     entry = {
                         **entry,
-                        **confusion(hat, gt, threshold, prefix="refined_"),
+                        **confusion(hat_down, gt_down, threshold, prefix="refined_"),
                         **chamfer_distance(hat, gt, threshold, prefix="refined_"),
-                        **confusion(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_"),
-                        **chamfer_distance(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_"),
+                        **confusion(bp_down, gt_down, threshold, prefix="backproj_"),
+                        **chamfer_distance(backprojection, gt, threshold, prefix="backproj_"),
                    
                     }
                 entry = {
                     **entry,
                     "interpret_frac": interpret_frac(hat, backprojection),
-                    # "PSNR": psnr(hat, gt)
+                    "PSNR": psnr(hat, gt).item()
                 }
                   
                 
@@ -71,6 +76,7 @@ def synthetic_test(
     make_test(reconstruct).to_csv(csv_output_path)
 
 
+@torch.no_grad()
 def synthetic_test_adaptive(
     model, 
     ds, 
@@ -78,6 +84,7 @@ def synthetic_test_adaptive(
     reconstruct,
     repeat_each=3
 ):
+    psnr = PSNR().to(model.device)
     def make_test(reconstruct):
         df = []
         for i in tqdm(range(len(ds))):
@@ -95,15 +102,22 @@ def synthetic_test_adaptive(
                 entry = {
                     "elapsed": elapsed
                 }
+                
+                backprojection = backprojection.unsqueeze(0)
+                hat_down = downsample(hat, tgt=(30, 30, 30))
+                gt_down = downsample(gt, tgt=(30, 30, 30))
+                bp_down = downsample(backprojection, tgt=(30, 30, 30))
+                
                 threshold = percentile_threshold(hat)
+                threshold_down = percentile_threshold(hat_down)
                 entry = {
                     **entry,
-                    **confusion(hat, gt, threshold, prefix="refined_", suffix="adaptive"),
+                    **confusion(hat_down, gt_down, threshold_down, prefix="refined_", suffix="adaptive"),
                     **chamfer_distance(hat, gt, threshold, prefix="refined_", suffix="adaptive"),
-                    **confusion(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_", suffix="adaptive"),
-                    **chamfer_distance(backprojection.unsqueeze(0), gt, threshold, prefix="backproj_", suffix="adaptive"),
+                    **confusion(bp_down, gt_down, threshold_down, prefix="backproj_", suffix="adaptive"),
+                    **chamfer_distance(backprojection, gt, threshold, prefix="backproj_", suffix="adaptive"),
                     "interpret_frac": interpret_frac(hat, backprojection, threshold),
-                    # "PSNR": psnr(hat, gt)
+                    "PSNR": psnr(hat, gt)
                 }
                 
                 df.append(pd.DataFrame([entry]))
