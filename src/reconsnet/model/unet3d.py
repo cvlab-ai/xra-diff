@@ -14,7 +14,7 @@ from ..util.coords import pad_pow2, crop_grid
 from ..util.metrics import dice
 
 
-class Unet3D(pl.LightningModule):
+class Unet3DModule(pl.LightningModule):
     def __init__(self, lr):
         super().__init__()
         config = get_config()

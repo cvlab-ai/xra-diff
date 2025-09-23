@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.model.gan import GANModule
+from reconsnet.model.unet3d import Unet3DModule
 from reconsnet.data.dataset import XRayDatasetRight
 from reconsnet.util.visualize import visualize
 
@@ -11,6 +12,7 @@ from reconsnet.util.visualize import visualize
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint_path', type=str, help='Model weights path', default="stronger-conditioning.ckpt")
 parser.add_argument('--baseline_checkpoint_path', type=str, help='Model weights path', default="baseline.ckpt")
+parser.add_argument('--unet_checkpoint_path', type=str, help='Model weights path', default="unet3d-baseline.ckpt")
 parser.add_argument('--sample_idx', type=int, help='Which sample from dataset to use as input data', default=0)
 parser.add_argument('--dataset_path', type=str, help='ImageCAS dataset path', default="/home/shared/imagecas/projections_split/val")
 parser.add_argument('--port', type=int, help='Where to serve the visualization', default=2137)
@@ -25,6 +27,7 @@ matplotlib.rcParams['webagg.open_in_browser'] = False
 ds = XRayDatasetRight(root_dir=args.dataset_path)
 model = DiffusionModule.load_from_checkpoint(args.checkpoint_path, lr=1e-4)
 baseline = GANModule.load_from_checkpoint(args.baseline_checkpoint_path)
+unet = Unet3DModule.load_from_checkpoint(args.unet_checkpoint_path, lr=1e-5)
 
 sample = ds[args.sample_idx]
 sample = (sample[0].to(model.device), sample[1].to(model.device), sample[2].to(model.device), sample[3].to(model.device))
@@ -37,6 +40,10 @@ _, s0 = visualize(
 )
 _, s1 = visualize(
     lambda x: baseline.generator.forward(x[0]),
+    sample
+)
+_, s2 = visualize(
+    lambda x: unet.forward(x[0]),
     sample
 )
 plt.show()
