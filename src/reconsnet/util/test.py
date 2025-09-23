@@ -6,7 +6,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .metrics import confusion, chamfer_distance, interpret_frac, downsample
+from .metrics import confusion, chamfer_distance, interpret_frac, downsample, chamfer_distance_image, dice_image
 from ..data.postprocess import percentile_threshold, denoise_voxels
 from ..util.coords import reproject
 from torchmetrics import PeakSignalNoiseRatio as PSNR
@@ -130,7 +130,7 @@ def clinical_test(
     csv_output_path,
     reconstruct,
     repeat_each=3,
-    camera_grid_size = [60] * 3
+    camera_grid_size = [60] * 3,
 ):
     def make_test(reconstruct):
         df = []
@@ -149,10 +149,32 @@ def clinical_test(
                 }
                 threshold = percentile_threshold(hat)
                 hat_bin = denoise_voxels((hat > threshold).float()).squeeze().cpu().numpy()
+                bp_bin = (backprojection > 0).squeeze().cpu().numpy()
 
-                backprojection = backprojection.unsqueeze(0)
                 pred0, pred1 = reproject(hat_bin, xray0, xray1, camera_grid_size)
-                # TODO: add metrics
+                backproj0, backproj1 = reproject(bp_bin, xray0, xray1, camera_grid_size)
+
+                def metric(f, name):
+                    m0 = f(pred0.asarray(), xray0.img.cpu().numpy())
+                    m1 = f(pred1.asarray(), xray1.img.cpu().numpy())
+                    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy())
+                    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy())
+                    return {
+                        f"{name}0": m0,
+                        f"{name}1": m1,
+                        f"bp_{name}0": bp_m0,
+                        f"bp_{name}1": bp_m1,
+                        f"{name}0_mm": m0 * xray0.spacing,
+                        f"{name}1_mm": m1 * xray1.spacing,
+                        f"bp_{name}0_mm": bp_m0 * xray0.spacing,
+                        f"bp_{name}1_mm": bp_m1 * xray1.spacing,
+                    }
+                    
+                entry = {
+                    **metric(chamfer_distance_image, "chamfer_distance"),
+                    **metric(dice_image, "dice2d")
+                }
+              
                 df.append(pd.DataFrame([entry]))
             if i % SAVE_EVERY == 0: pd.concat(df).to_csv(csv_output_path)
         return pd.concat(df)

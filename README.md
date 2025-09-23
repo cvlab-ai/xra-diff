@@ -23,7 +23,8 @@ Under `scripts` directory:
     - `test_synthetic_right.py` - test a model on the synthetic dataset (right arteries)
     - `test_synthetic_baseline_right.py` - test a baseline on the synthetic dataset (right arteries)
     - `test_synthetic_adaptive_right.py` - test a model on the synthetic dataset with adaptive threshold (right arteries)
-
+    - `test_clinical_right.py` - test a model on the clinical dataset (right arteries)
+    - `test_clinical_baseline_right.py` - test a baseline on the clinical dataset (right)
 - `demos/` - scripts for qualitative evaluation
     - `synthetic_visualizer.py` - synthetic data visualizer (see --help)
     - `clinical_visualizer.py` - clinical data visualizer (see --help)
@@ -39,5 +40,7 @@ Under `scripts` directory:
 
 # Notebooks
 
-Under `notebooks` directory
+Under `notebooks` directory:
+- `synthetic_results.ipynb` (3.1. SOTA)
+- `clinical_results.ipynb` (3.3. )
 

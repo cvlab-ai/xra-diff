@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
+import numpy as np
 
+from scipy.ndimage import distance_transform_edt
 from ..data.postprocess import denoise_voxels
 
 
@@ -90,6 +92,27 @@ def interpret_frac(pred, backproj, threshold=0.2):
     if total_pred == 0:
         return 0.0
     return intersection / total_pred
+
+
+def chamfer_distance_image(img1, img2):
+    img1 = img1.astype(bool)
+    img2 = img2.astype(bool)
+
+    dist_to_img2 = distance_transform_edt(~img2)
+    dist_to_img1 = distance_transform_edt(~img1)
+
+    d1 = dist_to_img2[img1].mean() if np.any(img1) else 0.0
+    d2 = dist_to_img1[img2].mean() if np.any(img2) else 0.0
+    return (d1 + d2)/2
+
+
+def dice_image(img1, img2):
+    img1 = img1.astype(bool)
+    img2 = img2.astype(bool)
+    intersection = np.logical_and(img1, img2).sum()
+    size1 = img1.sum()
+    size2 = img2.sum()
+    return 2.0 * intersection / (size1 + size2)
 
 
 def lumen_diameter_error(pred, target):
