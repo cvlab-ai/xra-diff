@@ -1,16 +1,19 @@
-from reconsnet.data.dataset import ClinicalDataset
-from reconsnet.util.test import clinical_test
+'''
+test on a synthesized dataset
+'''
+from reconsnet.util.test import synthetic_test_adaptive
 from reconsnet.model.diffusion import DiffusionModule
+from reconsnet.data.dataset import XRayDatasetRight
 
 CHECKPOINT_PATH = "stronger-conditioning.ckpt"
-DATA_PATH = "/home/shared/uck-right"
-RESULTS_PATH = "data/clinical_right.csv"
+DATA_PATH = "/home/shared/imagecas/projections_split/val"
+RESULTS_PATH = "data/synthetic_adaptive_diffusion_right.csv"
 MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)
 RECONSTRUCT = lambda x: MODEL.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
 
-clinical_test(
+synthetic_test_adaptive(
     model=MODEL,
-    ds=ClinicalDataset(root_dir=DATA_PATH),
+    ds=XRayDatasetRight(root_dir=DATA_PATH),
     csv_output_path=RESULTS_PATH,
     reconstruct=RECONSTRUCT
 )

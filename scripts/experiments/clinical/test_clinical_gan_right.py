@@ -8,7 +8,7 @@ from torch.utils.data import Subset
 
 CHECKPOINT_PATH = "baseline.ckpt"
 DATA_PATH = "/home/shared/uck-right"
-RESULTS_PATH = "data/clinical_baseline_right.csv"
+RESULTS_PATH = "data/clinical_gan_right.csv"
 MODEL = GANModule.load_from_checkpoint(CHECKPOINT_PATH)
 RECONSTRUCT = lambda x: MODEL.generator.forward(x[0])
 

@@ -20,11 +20,11 @@ uv run scrpits/dataset/make_split.py
 
 Under `scripts` directory:
 - `experiments/` - scripts for running experiments
-    - `test_synthetic_right.py` - test a model on the synthetic dataset (right arteries)
-    - `test_synthetic_baseline_right.py` - test a baseline on the synthetic dataset (right arteries)
-    - `test_synthetic_adaptive_right.py` - test a model on the synthetic dataset with adaptive threshold (right arteries)
-    - `test_clinical_right.py` - test a model on the clinical dataset (right arteries)
-    - `test_clinical_baseline_right.py` - test a baseline on the clinical dataset (right)
+    - `synthetic/` - synthetic dataset tests
+    - `clinical/` - clinical dataset tests
+    - `ablation/` - ablation tests
+    - `other/`
+        - `test_synthetic_motion_right.py` - add simulated motion to synthetic dataset
 - `demos/` - scripts for qualitative evaluation
     - `synthetic_visualizer.py` - synthetic data visualizer (see --help)
     - `clinical_visualizer.py` - clinical data visualizer (see --help)
@@ -41,6 +41,9 @@ Under `scripts` directory:
 # Notebooks
 
 Under `notebooks` directory:
-- `synthetic_results.ipynb` (3.1. SOTA)
-- `clinical_results.ipynb` (3.3. )
-
+- `synthetic_results.ipynb` (3.1. State-of-the-art)
+- `motion.ipynb` (3.2. Dataset domain gap) 
+- `clinical_results.ipynb` (3.3. Clinical feasibility)
+- `ablation.ipynb` (3.4. Ablation study)
+- `clinical_qualitative.ipynb` (3.5. Qualitative analysis)
+- TODO (3.6. Intepretability)

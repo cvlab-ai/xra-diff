@@ -11,7 +11,7 @@ from torch.utils.data import Subset
 
 CHECKPOINT_PATH = "baseline.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/val"
-RESULTS_PATH = "data/synthetic_baseline_right.csv"
+RESULTS_PATH = "data/synthetic_gan_right.csv"
 MODEL = GANModule.load_from_checkpoint(CHECKPOINT_PATH)
 RECONSTRUCT = lambda x: MODEL.generator.forward(x[0])
 
