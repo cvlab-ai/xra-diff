@@ -58,6 +58,10 @@ class XRayDataset(Dataset):
         gt = loaded["gt"]
         return self.transform(projections, gt)
 
+class XRayDatasetBoth(XRayDataset):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, side="")
+
 
 class XRayDatasetLeft(XRayDataset):
     def __init__(self, **kwargs):
@@ -106,6 +110,10 @@ def get_dm_left(train_root_dir, val_root_dir):
 
 def get_dm_right(train_root_dir, val_root_dir):
     return _get_dm(train_root_dir, val_root_dir, XRayDatasetRight)
+
+
+def get_dm_both(train_root_dir, val_root_dir):
+    return _get_dm(train_root_dir, val_root_dir, XRayDatasetBoth)
 
 
 def load_clinical_sample(params_path, image_path, dicom=False) -> XRay:
