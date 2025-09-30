@@ -1,6 +1,6 @@
 # XRA-Diff: Guided diffusion for 3D coronaries
 
-"XRA-Diff: Feasibility of guided diffusion towards coronary artery three-dimensional reconstruction"
+"XRA-Diff:  Guided diffusion as a refinement for backprojected coronary angiography X-ray images"
 
 # Installing dependencies
 
@@ -32,11 +32,14 @@ Under `scripts` directory:
     - `image2cas.sh` - extraction of ImageCAS 
     - `prepare_data.py` - simulates the image acquisition using cone beam geometry, generates synthetic dataset
     - `make_split.py` - splits the above dataset to train and valitation splits
+    - `make_pilot.py` - create a validation dataset subset for pilot study
 - `training/` - scripts for training models
     - `train_diffusion_right.py` - train diffusion model for right arteries
     - `train_diffusion_left.py` - train diffusion model for left arteries
     - `train_gan_right.py` - train gan model for right arteries (baseline)
     - `train_gan_left.py` - train gan model for left arteries (baseline)
+    - `train_unet3d_right.py` - train unet for right arteries (baseline)
+    - `train_unet3d_left.py` - train unet for left arteries
 
 # Notebooks
 
