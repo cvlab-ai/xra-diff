@@ -80,14 +80,16 @@ def synthetic_test_adaptive(
     ds, 
     csv_output_path,
     reconstruct,
-    repeat_each=3
+    repeat_each=3,
+    camera_grid_size = [60] * 3,
 ):
     psnr = PSNR().to(model.device)
+    ds.return_projections = True
     def make_test(reconstruct):
         df = []
         for i in tqdm(range(len(ds))):
             for _ in range(repeat_each):
-                backprojection, gt, p0, p1 = ds[i]
+                (backprojection, gt, p0, p1), (xray0, xray1) = ds[i]
                 backprojection = backprojection.to(model.device)
                 p0 = p0.to(model.device)
                 p1 = p1.to(model.device)
@@ -108,6 +110,16 @@ def synthetic_test_adaptive(
                 
                 threshold = percentile_threshold(hat)
                 threshold_down = percentile_threshold(hat_down)
+                
+                hat_bin = denoise_voxels((hat > threshold).float()).squeeze().cpu().numpy()
+                pred0, pred1 = reproject(hat_bin, xray0, xray1, camera_grid_size)
+                
+                # API adaptation
+                xray0.img = torch.from_numpy(xray0.img.asarray())
+                xray1.img = torch.from_numpy(xray1.img.asarray())
+            
+                args = (pred0, pred1, pred0, pred1, xray0, xray1)
+
                 entry = {
                     **entry,
                     **confusion(hat_down, gt_down, threshold_down, prefix="refined_", suffix="adaptive"),
@@ -115,7 +127,9 @@ def synthetic_test_adaptive(
                     **confusion(bp_down, gt_down, threshold_down, prefix="backproj_", suffix="adaptive"),
                     **chamfer_distance(backprojection, gt, threshold, prefix="backproj_", suffix="adaptive"),
                     "interpret_frac": interpret_frac(hat, backprojection, threshold),
-                    "PSNR": psnr(hat, gt)
+                    "PSNR": psnr(hat, gt),
+                    **_reproj_metric(chamfer_distance_image, "chamfer_distance", args),
+                    **_reproj_metric(dice_image, "dice2d", args)
                 }
                 
                 df.append(pd.DataFrame([entry]))
@@ -153,29 +167,34 @@ def clinical_test(
 
                 pred0, pred1 = reproject(hat_bin, xray0, xray1, camera_grid_size)
                 backproj0, backproj1 = reproject(bp_bin, xray0, xray1, camera_grid_size)
+                args = (pred0, pred1, backproj0, backproj1, xray0, xray1)
 
-                def metric(f, name):
-                    m0 = f(pred0.asarray(), xray0.img.cpu().numpy())
-                    m1 = f(pred1.asarray(), xray1.img.cpu().numpy())
-                    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy())
-                    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy())
-                    return {
-                        f"{name}0": m0,
-                        f"{name}1": m1,
-                        f"bp_{name}0": bp_m0,
-                        f"bp_{name}1": bp_m1,
-                        f"{name}0_mm": m0 * xray0.spacing,
-                        f"{name}1_mm": m1 * xray1.spacing,
-                        f"bp_{name}0_mm": bp_m0 * xray0.spacing,
-                        f"bp_{name}1_mm": bp_m1 * xray1.spacing,
-                    }
-                    
                 entry = {
-                    **metric(chamfer_distance_image, "chamfer_distance"),
-                    **metric(dice_image, "dice2d")
+                    **_reproj_metric(chamfer_distance_image, "chamfer_distance", args),
+                    **_reproj_metric(dice_image, "dice2d", args)
                 }
               
                 df.append(pd.DataFrame([entry]))
             if i % SAVE_EVERY == 0: pd.concat(df).to_csv(csv_output_path)
         return pd.concat(df)
     make_test(reconstruct).to_csv(csv_output_path)
+
+
+def _reproj_metric(f, name, args):
+    pred0, pred1, backproj0, backproj1, xray0, xray1 = args
+    
+    m0 = f(pred0.asarray(), xray0.img.cpu().numpy())
+    m1 = f(pred1.asarray(), xray1.img.cpu().numpy())
+    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy())
+    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy())
+    return {
+        f"{name}0": m0,
+        f"{name}1": m1,
+        f"bp_{name}0": bp_m0,
+        f"bp_{name}1": bp_m1,
+        f"{name}0_mm": m0 * xray0.spacing,
+        f"{name}1_mm": m1 * xray1.spacing,
+        f"bp_{name}0_mm": bp_m0 * xray0.spacing,
+        f"bp_{name}1_mm": bp_m1 * xray1.spacing,
+    }
+                    

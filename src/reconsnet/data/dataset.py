@@ -42,11 +42,12 @@ def default_transform(projections, gt):
     return preprocessed.squeeze(0), gt, xray_to_tensor(projections[0]), xray_to_tensor(projections[1])
 
 class XRayDataset(Dataset):
-    def __init__(self, root_dir, side, transform=default_transform):
+    def __init__(self, root_dir, side, transform=default_transform, return_projections=False):
         self.root = Path(root_dir)
         self.transform = transform
         self.side = side
         self.paths = list(self.root.glob(f"{side}*.joblib"))
+        self.return_projections = return_projections
     
     def __len__(self):
         return len(self.paths)
@@ -56,7 +57,11 @@ class XRayDataset(Dataset):
         loaded = joblib.load(path)
         projections = loaded["projections"]
         gt = loaded["gt"]
-        return self.transform(projections, gt)
+        trfed = self.transform(projections, gt)
+        
+        if self.return_projections:
+            return trfed, projections
+        return trfed
 
 class XRayDatasetBoth(XRayDataset):
     def __init__(self, **kwargs):
