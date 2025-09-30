@@ -14,7 +14,7 @@ from ..util.metrics import dice
 
 
 class DiffusionModule(pl.LightningModule):
-    def __init__(self, lr, guidance_scale_override=None):
+    def __init__(self, lr, guidance_scale_override=None, take_projections=True):
         super().__init__()
         config = get_config()
         self.model = UNet3DConditionModel(
@@ -36,6 +36,7 @@ class DiffusionModule(pl.LightningModule):
         self.drop_proba = config['guidance']['drop_proba']
         self.psnr = PSNR()
         self.lr = lr
+        self.take_projections = take_projections
 
     def forward(self, voxels, t, backprojection, projection0, projection1, drop_proba=0.0):
         rand = torch.rand(1, device=self.device).item()
@@ -43,7 +44,10 @@ class DiffusionModule(pl.LightningModule):
         bp_feat = self.bp_encoder(cond)
         p0_feat = self.p0_encoder(torch.zeros_like(projection0, device=self.device) if rand < drop_proba else projection0)
         p1_feat = self.p1_encoder(torch.zeros_like(projection1, device=self.device) if rand < drop_proba else projection1)
-        feat = bp_feat + p0_feat + p1_feat
+        if self.take_projections:
+            feat = bp_feat + p0_feat + p1_feat
+        else:
+            feat = bp_feat
         inp = torch.cat([voxels, cond], dim=1)
         return self.model(inp, t, feat).sample
     
