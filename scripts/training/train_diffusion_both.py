@@ -4,7 +4,7 @@ from reconsnet.data.dataset import get_dm_both
 
 
 train_with_clearml(
-    "diffusion_left",
+    "diffusion_both",
     DiffusionModule,
     get_dm_both("/home/shared/imagecas/projections_split/train", "/home/shared/imagecas/projections_split/val")
 )
