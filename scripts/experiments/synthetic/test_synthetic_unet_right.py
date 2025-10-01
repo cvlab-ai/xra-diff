@@ -10,7 +10,7 @@ from reconsnet.data.dataset import XRayDatasetRight
 from torch.utils.data import Subset
 
 CHECKPOINT_PATH = "unet3d-baseline.ckpt"
-DATA_PATH = "/home/shared/imagecas/projections_split/val"
+DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 RESULTS_PATH = "data/synthetic_unet_right.csv"
 MODEL = Unet3DModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-5)
 RECONSTRUCT = lambda x: F.sigmoid(MODEL.forward(x[0]))
