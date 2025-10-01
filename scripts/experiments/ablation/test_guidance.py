@@ -1,6 +1,6 @@
 from reconsnet.util.test import synthetic_test_adaptive, clinical_test
 from reconsnet.model.diffusion import DiffusionModule
-from reconsnet.data.dataset import XRayDatasetRight, ClinicalDataset
+from reconsnet.data.dataset import XRayDatasetRight, XRayDatasetLeft, ClinicalDataset
 
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 CLINICAL_DATA_RIGHT_PATH = "/home/shared/uck-right"
@@ -14,7 +14,7 @@ model_right = DiffusionModule.load_from_checkpoint(CHECKPOINT_RIGHT_PATH, lr=1e-
 model_left = DiffusionModule.load_from_checkpoint(CHECKPOINT_LEFT_PATH, lr=1e-5)
 ds_synthetic_right = XRayDatasetRight(root_dir=DATA_PATH)
 ds_clinical_right = ClinicalDataset(root_dir=CLINICAL_DATA_RIGHT_PATH)
-ds_synthetic_left = XRayDatasetRight(root_dir=DATA_PATH)
+ds_synthetic_left = XRayDatasetLeft(root_dir=DATA_PATH)
 # ds_clinical_left = ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH)
 reconstruct_right = lambda x: model_right.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
 reconstruct_left = lambda x: model_left.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
