@@ -9,6 +9,7 @@ dependencies = [
     "clearml",
     "diffusers>=0.35.1",
     "matplotlib>=3.10.5",
+    "monai>=1.5.1",
     "nibabel>=5.3.2",
     "odl>=0.8.2",
     "pandas>=2.3.2",
@@ -19,6 +20,7 @@ dependencies = [
     "tensorboard",
     "torch>=2.8.0",
     "torchmetrics>=1.8.1",
+    "torchvision>=0.23.0",
     "tornado>=6.5.2",
     "tqdm>=4.67.1",
 ]

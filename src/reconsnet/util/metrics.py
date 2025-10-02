@@ -102,6 +102,34 @@ def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.0)
     }
 
 
+def ot_metric(pred, target, threshold, d_mm, prefix="", suffix=None, to_mm=1.7):
+    if suffix is None: suffix = threshold
+
+    pred_down = pred
+    target_down = target
+    
+    pred_bin = (pred_down > threshold).float()
+    pred_bin = denoise_voxels(pred_bin)
+    gt_bin = (target_down > 0).float()
+
+    pred_points = pred_bin.nonzero(as_tuple=False).float()
+    gt_points = gt_bin.nonzero(as_tuple=False).float()
+    
+    if pred_points.shape[0] == 0 or gt_points.shape[0] == 0:
+        return {f"{prefix}Ot({d_mm})_{suffix}": 0}
+
+    dist_matrix = torch.cdist(pred_points, gt_points, p=2) * to_mm
+
+    tpr = (torch.min(dist_matrix, axis=0)[0] <= d_mm).sum()
+    fn = dist_matrix.shape[1] - tpr
+    tpm = (torch.min(dist_matrix, axis=1)[0] <= d_mm).sum()
+    fp = dist_matrix.shape[0] - tpm
+
+    ot_metric = (tpm + tpr) / (tpm + tpr + fp + fn)
+
+    return {f"{prefix}Ot({d_mm})_{suffix}": float(ot_metric)}
+
+
 def interpret_frac(pred, backproj, threshold=0.2):
     pred_bin = (pred >= threshold)
     backproj_bin = backproj.bool()

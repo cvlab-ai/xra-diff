@@ -6,7 +6,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .metrics import confusion, chamfer_distance, interpret_frac, downsample, chamfer_distance_image, dice_image
+from .metrics import confusion, chamfer_distance, interpret_frac, ot_metric, downsample, chamfer_distance_image, dice_image
 from ..data.postprocess import percentile_threshold, denoise_voxels
 from ..util.coords import reproject
 from torchmetrics import PeakSignalNoiseRatio as PSNR
@@ -57,9 +57,14 @@ def synthetic_test(
                         **entry,
                         **confusion(hat_down, gt_down, threshold, prefix="refined_"),
                         **chamfer_distance(hat, gt, threshold, prefix="refined_"),
+                        **ot_metric(hat, gt, threshold, d_mm=0, prefix="refined_"),
+                        **ot_metric(hat, gt, threshold, d_mm=1, prefix="refined_"),
+                        **ot_metric(hat, gt, threshold, d_mm=2, prefix="refined_"),
                         **confusion(bp_down, gt_down, threshold, prefix="backproj_"),
                         **chamfer_distance(backprojection, gt, threshold, prefix="backproj_"),
-                   
+                        **ot_metric(backprojection, gt, threshold, d_mm=0, prefix="backproj_"),
+                        **ot_metric(backprojection, gt, threshold, d_mm=1, prefix="backproj_"),
+                        **ot_metric(backprojection, gt, threshold, d_mm=2, prefix="backproj_")
                     }
                 entry = {
                     **entry,
@@ -124,8 +129,14 @@ def synthetic_test_adaptive(
                     **entry,
                     **confusion(hat_down, gt_down, threshold_down, prefix="refined_", suffix="adaptive"),
                     **chamfer_distance(hat, gt, threshold, prefix="refined_", suffix="adaptive"),
+                    **ot_metric(hat, gt, threshold, d_mm=0, prefix="refined_", suffix="adaptive"),
+                    **ot_metric(hat, gt, threshold, d_mm=1, prefix="refined_", suffix="adaptive"),
+                    **ot_metric(hat, gt, threshold, d_mm=2, prefix="refined_", suffix="adaptive"),
                     **confusion(bp_down, gt_down, threshold_down, prefix="backproj_", suffix="adaptive"),
                     **chamfer_distance(backprojection, gt, threshold, prefix="backproj_", suffix="adaptive"),
+                    **ot_metric(backprojection, gt, threshold, d_mm=0, prefix="backproj_", suffix="adaptive"),
+                    **ot_metric(backprojection, gt, threshold, d_mm=1, prefix="backproj_", suffix="adaptive"),
+                    **ot_metric(backprojection, gt, threshold, d_mm=2, prefix="backproj_", suffix="adaptive"),
                     "interpret_frac": interpret_frac(hat, backprojection, threshold),
                     "PSNR": psnr(hat, gt).item(),
                     **_reproj_metric(chamfer_distance_image, "chamfer_distance", args),
