@@ -1,11 +1,8 @@
-# TODO: enable once both sides training is finished
-exit(0)
-
 from reconsnet.util.test import synthetic_test_adaptive, clinical_test
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetLeft, XRayDatasetRight, ClinicalDataset
 
-CHECKPOINT_PATH = "both.ckpt"
+CHECKPOINT_PATH = "/home/shared/model-weights/both.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 CLINICAL_DATA_RIGHT_PATH = "/home/shared/uck-right"
 CLINICAL_DATA_LEFT_PATH = "/home/shared/uck-left"
@@ -27,18 +24,18 @@ synthetic_test_adaptive(
     reconstruct=RECONSTRUCT
 )
 
-#NOTE: disabled for pilot study
-clinical_test(
-    model=MODEL,
-    ds=ClinicalDataset(root_dir=CLINICAL_DATA_RIGHT_PATH),
-    csv_output_path=f"data/clinical_both_right.csv",
-    reconstruct=RECONSTRUCT,
-)
+# #NOTE: disabled for pilot study
+# clinical_test(
+#     model=MODEL,
+#     ds=ClinicalDataset(root_dir=CLINICAL_DATA_RIGHT_PATH),
+#     csv_output_path=f"data/clinical_both_right.csv",
+#     reconstruct=RECONSTRUCT,
+# )
 
-#NOTE: disabled for pilot study
-clinical_test(
-    model=MODEL,
-    ds=ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH),
-    csv_output_path=f"data/clinical_both_left.csv",
-    reconstruct=RECONSTRUCT,
-)
+# #NOTE: disabled for pilot study
+# clinical_test(
+#     model=MODEL,
+#     ds=ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH),
+#     csv_output_path=f"data/clinical_both_left.csv",
+#     reconstruct=RECONSTRUCT,
+# )
