@@ -28,21 +28,41 @@ def downsample(volume, tgt=(60,60,60)):
                                stride=(sd, sh, sw),
                                ceil_mode=False)
     return volume_down
-    
+
+
+def add_tolerance(pred_bin, gt_bin, tol=1, convd=3):
+        kernel_size = 2 * tol + 1
+        if convd == 3:
+            conv = F.conv3d
+            kernelsz = (1, 1, kernel_size, kernel_size, kernel_size)
+        else:
+            conv = F.conv2d
+            kernelsz = (1, 1, kernel_size, kernel_size)
+
+        kernel = torch.ones(kernelsz, device=pred_bin.device)
+        pred_dil = (conv(pred_bin, kernel, padding=tol) > 0).float()
+        gt_dil   = (conv(gt_bin, kernel, padding=tol) > 0).float()
+        return pred_dil, gt_dil
+
 
 def confusion(pred, target, threshold, prefix="", suffix=None):
     if suffix is None: suffix = threshold
    
-    
     pred_bin = (pred > threshold).float()
     pred_bin = denoise_voxels(pred_bin)
     gt_bin = (target > 0).float()
+    
+    pred_bin, gt_bin = add_tolerance(pred_bin, gt_bin)
     tp = (pred_bin * gt_bin).sum().item()
     fp = (pred_bin * (1 - gt_bin)).sum().item()
     fn = ((1 - pred_bin) * gt_bin).sum().item()
     tn = ((1 - pred_bin) * (1 - gt_bin)).sum().item()
     dice3d = (2 * tp) / (2 * tp + fp + fn + 1e-8)
     
+    # print(pred.min(), pred.max(), pred.mean())
+    # print("gt unique:", np.unique(target)[:10])
+    # print("shapes:", pred.shape, target.shape)
+        
     return {
         f"{prefix}dice3d_{suffix}": dice3d,
         f"{prefix}TP_{suffix}": tp, 
@@ -52,7 +72,7 @@ def confusion(pred, target, threshold, prefix="", suffix=None):
     }
 
 
-def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.7):
+def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.0):
     if suffix is None: suffix = threshold
 
     pred_down = pred
@@ -85,7 +105,7 @@ def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.7)
 def interpret_frac(pred, backproj, threshold=0.2):
     pred_bin = (pred >= threshold)
     backproj_bin = backproj.bool()
-
+    
     intersection = (pred_bin & backproj_bin).sum().item()
     total_pred = pred_bin.sum().item()
 
@@ -107,13 +127,11 @@ def chamfer_distance_image(img1, img2):
 
 
 def dice_image(img1, img2):
-    img1 = img1.astype(bool)
-    img2 = img2.astype(bool)
-    intersection = np.logical_and(img1, img2).sum()
+    img1 = torch.from_numpy(img1.astype(bool)).float().unsqueeze(dim=0)
+    img2 = torch.from_numpy(img2.astype(bool)).float().unsqueeze(dim=0)
+    img1, img2 = add_tolerance(img1, img2, tol=1, convd=2)
+    
+    intersection = torch.logical_and(img1, img2).sum()
     size1 = img1.sum()
     size2 = img2.sum()
     return 2.0 * intersection / (size1 + size2)
-
-
-def lumen_diameter_error(pred, target):
-    pass

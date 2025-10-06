@@ -127,7 +127,7 @@ def synthetic_test_adaptive(
                     **confusion(bp_down, gt_down, threshold_down, prefix="backproj_", suffix="adaptive"),
                     **chamfer_distance(backprojection, gt, threshold, prefix="backproj_", suffix="adaptive"),
                     "interpret_frac": interpret_frac(hat, backprojection, threshold),
-                    "PSNR": psnr(hat, gt),
+                    "PSNR": psnr(hat, gt).item(),
                     **_reproj_metric(chamfer_distance_image, "chamfer_distance", args),
                     **_reproj_metric(dice_image, "dice2d", args)
                 }
@@ -183,10 +183,10 @@ def clinical_test(
 def _reproj_metric(f, name, args):
     pred0, pred1, backproj0, backproj1, xray0, xray1 = args
     
-    m0 = f(pred0.asarray(), xray0.img.cpu().numpy())
-    m1 = f(pred1.asarray(), xray1.img.cpu().numpy())
-    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy())
-    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy())
+    m0 = f(pred0.asarray(), xray0.img.cpu().numpy()).item()
+    m1 = f(pred1.asarray(), xray1.img.cpu().numpy()).item()
+    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy()).item()
+    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy()).item()
     return {
         f"{name}0": m0,
         f"{name}1": m1,
