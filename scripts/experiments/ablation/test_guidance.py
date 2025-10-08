@@ -19,7 +19,7 @@ ds_synthetic_left = XRayDatasetLeft(root_dir=DATA_PATH)
 reconstruct_right = lambda x: model_right.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
 reconstruct_left = lambda x: model_left.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
 
-for gsc in [0.0, 1.0, 2.0, 6.0, 8.0, 10.0, 12.0]:
+for gsc in [0.0, 0.2, 0.3, 0.5, 0.8, 1.0, 2.0, 6.0, 8.0, 10.0, 12.0]:
     model_right.guidance_scale = gsc
     model_left.guidance_scale = gsc
     synthetic_test_adaptive(
