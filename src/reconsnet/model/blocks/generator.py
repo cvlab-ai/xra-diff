@@ -93,7 +93,7 @@ class Generator(nn.Module):
         x = self.up3(x, conv2)
         x = self.up4(x, conv1)
 
-        out = self.conv_class(x)
-        # out = self.sigmoid(x)
+        x = self.conv_class(x)
+        out = self.sigmoid(x)
 
         return crop_grid(out)
