@@ -52,7 +52,7 @@ def confusion(pred, target, threshold, prefix="", suffix=None):
     pred_bin = denoise_voxels(pred_bin)
     gt_bin = (target > 0).float()
     
-    pred_bin, gt_bin = add_tolerance(pred_bin, gt_bin)
+    # pred_bin, gt_bin = add_tolerance(pred_bin, gt_bin)
     tp = (pred_bin * gt_bin).sum().item()
     fp = (pred_bin * (1 - gt_bin)).sum().item()
     fn = ((1 - pred_bin) * gt_bin).sum().item()
@@ -87,10 +87,7 @@ def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.0)
     
     if pred_points.shape[0] == 0 or gt_points.shape[0] == 0:
         return {f"{prefix}chamfer_{suffix}": 1e7}
-
-    
     dist_matrix = torch.cdist(pred_points, gt_points, p=2)
-
     min_dist_1_to_2 = torch.min(dist_matrix, dim=1).values * to_mm
     min_dist_2_to_1 = torch.min(dist_matrix, dim=0).values * to_mm
     dist_1 = torch.mean(min_dist_1_to_2, dim=0)
@@ -102,7 +99,31 @@ def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.0)
     }
 
 
-def ot_metric(pred, target, threshold, d_mm, prefix="", suffix=None, to_mm=1.7):
+def earth_movers_distance(pred, target, threshold, prefix="", suffix="None"):
+    from scipy.optimize import linear_sum_assignment
+    
+
+    pred_bin = (pred > threshold).float()
+    pred_bin = denoise_voxels(pred_bin)
+    gt_bin = (target > 0).float()
+
+    pred_points = pred_bin.nonzero(as_tuple=False).float()
+    gt_points = gt_bin.nonzero(as_tuple=False).float()
+    
+    N, M = pred_points.shape[0], gt_points.shape[0]
+    if N != M:
+        n = min(N, M)
+        pred_points = pred_points[torch.randperm(N)[:n]]
+        gt_points = gt_points[torch.randperm(M)[:n]]
+    
+    dist_matrix = torch.cdist(pred_points, gt_points, p=2).cpu().numpy()
+    row_ind, col_ind = linear_sum_assignment(dist_matrix)
+    emd = dist_matrix[row_ind, col_ind].mean()
+    return {
+        f"{prefix}emd_{suffix}": emd
+    }
+
+def ot_metric(pred, target, threshold, d_mm, prefix="", suffix=None, to_mm=1.0):
     if suffix is None: suffix = threshold
 
     pred_down = pred
@@ -163,3 +184,29 @@ def dice_image(img1, img2):
     size1 = img1.sum()
     size2 = img2.sum()
     return 2.0 * intersection / (size1 + size2)
+
+
+def ssim3d(x, y, window_size=7, C1=1e-4, C2=9e-4):
+    def create_window(size, sigma=1.5):
+        coords = torch.arange(size, dtype=torch.float32) - size // 2
+        g = torch.exp(-(coords ** 2) / (2 * sigma ** 2))
+        g = g / g.sum()
+        window_1d = g.view(1, 1, -1)
+        window_3d = (window_1d.transpose(2, 1) * g).view(size, size, 1) * g.view(1, 1, size)
+        window_3d = window_3d / window_3d.sum()
+        return window_3d.to(x.device)
+
+    window = create_window(window_size).unsqueeze(0).unsqueeze(0)
+
+    mu_x = F.conv3d(x, window, padding=window_size//2)
+    mu_y = F.conv3d(y, window, padding=window_size//2)
+
+    mu_x2, mu_y2 = mu_x**2, mu_y**2
+    mu_xy = mu_x * mu_y
+
+    sigma_x2 = F.conv3d(x*x, window, padding=window_size//2) - mu_x2
+    sigma_y2 = F.conv3d(y*y, window, padding=window_size//2) - mu_y2
+    sigma_xy = F.conv3d(x*y, window, padding=window_size//2) - mu_xy
+
+    ssim_map = ((2 * mu_xy + C1) * (2 * sigma_xy + C2)) / ((mu_x2 + mu_y2 + C1) * (sigma_x2 + sigma_y2 + C2))
+    return ssim_map.mean()
