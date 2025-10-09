@@ -1,11 +1,8 @@
-# TODO: enable once left side dataset is prepared
-exit(0)
-
 from reconsnet.data.dataset import ClinicalDataset
 from reconsnet.util.test import clinical_test
 from reconsnet.model.diffusion import DiffusionModule
 
-CHECKPOINT_PATH = "left.ckpt"
+CHECKPOINT_PATH = "/home/shared/model-weights/left.ckpt"
 DATA_PATH = "/home/shared/uck-left"
 RESULTS_PATH = "data/clinical_diffusion_left.csv"
 MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)

@@ -24,18 +24,16 @@ synthetic_test_adaptive(
     reconstruct=RECONSTRUCT
 )
 
-# #NOTE: disabled for pilot study
-# clinical_test(
-#     model=MODEL,
-#     ds=ClinicalDataset(root_dir=CLINICAL_DATA_RIGHT_PATH),
-#     csv_output_path=f"data/clinical_both_right.csv",
-#     reconstruct=RECONSTRUCT,
-# )
+clinical_test(
+    model=MODEL,
+    ds=ClinicalDataset(root_dir=CLINICAL_DATA_RIGHT_PATH),
+    csv_output_path=f"data/clinical_both_right.csv",
+    reconstruct=RECONSTRUCT,
+)
 
-# #NOTE: disabled for pilot study
-# clinical_test(
-#     model=MODEL,
-#     ds=ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH),
-#     csv_output_path=f"data/clinical_both_left.csv",
-#     reconstruct=RECONSTRUCT,
-# )
+clinical_test(
+    model=MODEL,
+    ds=ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH),
+    csv_output_path=f"data/clinical_both_left.csv",
+    reconstruct=RECONSTRUCT,
+)
