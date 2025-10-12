@@ -97,7 +97,7 @@ class GANModule(pl.LightningModule):
         x, y, _, _ = batch
         x = x.to(self.device)
         y = y.to(self.device)  
-        sampled_voxels = F.sigmoid(self.generator(x))
+        sampled_voxels = self.generator(x)
 
         def log_sample(ix, threshold=0.5):
             voxels = sampled_voxels[ix][0]

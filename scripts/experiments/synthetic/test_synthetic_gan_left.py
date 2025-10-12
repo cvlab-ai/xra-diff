@@ -9,9 +9,9 @@ from reconsnet.data.dataset import XRayDatasetRight
 
 from torch.utils.data import Subset
 
-CHECKPOINT_PATH = "baseline.ckpt"
+CHECKPOINT_PATH = "/home/shared/model-weights/baseline-gan-left.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
-RESULTS_PATH = "data/synthetic_gan_right.csv"
+RESULTS_PATH = "data/synthetic_gan_left.csv"
 MODEL = GANModule.load_from_checkpoint(CHECKPOINT_PATH)
 RECONSTRUCT = lambda x: MODEL.generator.forward(x[0])
 
