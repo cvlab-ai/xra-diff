@@ -4,8 +4,6 @@ from reconsnet.util.test import synthetic_test
 from reconsnet.model.unet3d import Unet3DModule
 from reconsnet.data.dataset import XRayDatasetLeft
 
-from torch.utils.data import Subset
-
 CHECKPOINT_PATH = "/home/shared/model-weights/baseline-unet-left.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 RESULTS_PATH = "data/synthetic_unet_left.csv"

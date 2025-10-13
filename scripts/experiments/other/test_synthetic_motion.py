@@ -3,8 +3,8 @@ from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetRight, XRayDatasetLeft, default_transform, random_move, random_scale
 
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
-CHECKPOINT_RIGHT_PATH = "stronger-conditioning.ckpt"
-CHECKPOINT_LEFT_PATH = "left.ckpt"
+CHECKPOINT_RIGHT_PATH = "/home/shared/model-weights/right.ckpt"
+CHECKPOINT_LEFT_PATH = "/home/shared/model-weights/left.ckpt"
 MODEL_RIGHT = DiffusionModule.load_from_checkpoint(CHECKPOINT_RIGHT_PATH, lr=1e-4)
 MODEL_LEFT = DiffusionModule.load_from_checkpoint(CHECKPOINT_LEFT_PATH, lr=1e-4)
 RECONSTRUCT_RIGHT = lambda x: MODEL_RIGHT.fast_reconstruct(*x, num_inference_steps=10, guidance=True)

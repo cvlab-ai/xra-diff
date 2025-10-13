@@ -1,6 +1,3 @@
-'''
-test on a synthesized dataset
-'''
 from reconsnet.util.test import synthetic_test
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetLeft

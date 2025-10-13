@@ -1,13 +1,6 @@
-'''
-test on a synthesized dataset
-'''
-import torch.nn.functional as F
-
 from reconsnet.util.test import synthetic_test
 from reconsnet.model.gan import GANModule
-from reconsnet.data.dataset import XRayDatasetRight
-
-from torch.utils.data import Subset
+from reconsnet.data.dataset import XRayDatasetLeft
 
 CHECKPOINT_PATH = "/home/shared/model-weights/baseline-gan-left.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
@@ -17,7 +10,7 @@ RECONSTRUCT = lambda x: MODEL.generator.forward(x[0])
 
 synthetic_test(
     model=MODEL,
-    ds=XRayDatasetRight(root_dir=DATA_PATH),
+    ds=XRayDatasetLeft(root_dir=DATA_PATH),
     csv_output_path=RESULTS_PATH,
     reconstruct=RECONSTRUCT,
     repeat_each=1

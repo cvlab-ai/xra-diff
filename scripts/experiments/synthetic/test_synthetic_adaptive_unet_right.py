@@ -1,13 +1,8 @@
-'''
-test on a synthesized dataset
-'''
 import torch.nn.functional as F
 
-from reconsnet.util.test import synthetic_test, synthetic_test_adaptive
+from reconsnet.util.test import synthetic_test_adaptive
 from reconsnet.model.unet3d import Unet3DModule
 from reconsnet.data.dataset import XRayDatasetRight
-
-from torch.utils.data import Subset
 
 CHECKPOINT_PATH = "/home/shared/model-weights/baseline-unet-right.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"

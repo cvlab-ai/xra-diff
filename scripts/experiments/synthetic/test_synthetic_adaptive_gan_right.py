@@ -1,6 +1,3 @@
-'''
-test on a synthesized dataset
-'''
 from reconsnet.util.test import synthetic_test_adaptive
 from reconsnet.model.gan import GANModule
 from reconsnet.data.dataset import XRayDatasetRight

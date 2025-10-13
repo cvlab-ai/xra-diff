@@ -5,8 +5,8 @@ from reconsnet.data.dataset import XRayDatasetRight, XRayDatasetLeft, ClinicalDa
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 CLINICAL_DATA_RIGHT_PATH = "/home/shared/uck-right"
 CLINICAL_DATA_LEFT_PATH = "/home/shared/uck-left"
-CHECKPOINT_RIGHT_PATH = "stronger-conditioning.ckpt"
-CHECKPOINT_LEFT_PATH = "left.ckpt"
+CHECKPOINT_RIGHT_PATH = "/home/shared/model-weights/right.ckpt"
+CHECKPOINT_LEFT_PATH = "/home/shared/model-weights/left.ckpt"
 
 print("---------Guidance scale--------------------------")
 
