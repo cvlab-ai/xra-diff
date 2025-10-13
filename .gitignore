@@ -20,3 +20,4 @@ nohup.out
 nohup.out
 lightning_logs/
 checkpoints/
+.cred
