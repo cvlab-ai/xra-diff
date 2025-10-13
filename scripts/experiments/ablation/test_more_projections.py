@@ -15,11 +15,11 @@ from reconsnet.util.camera import build_camera_model
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 
 RESULTS_RIGHT_PATH = "data/synthetic_extra_projections_right.csv"
-CHECKPOINT_RIGHT_PATH = "stronger-conditioning.ckpt"
+CHECKPOINT_RIGHT_PATH = "/home/shared/model-weights/right.ckpt"
 MODEL_RIGHT = DiffusionModule.load_from_checkpoint(CHECKPOINT_RIGHT_PATH, lr=1e-4)
 RECONSTRUCT_RIGHT = lambda x: MODEL_RIGHT.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
 RESULTS_LEFT_PATH = "data/synthetic_extra_projections_left.csv"
-CHECKPOINT_LEFT_PATH = "left.ckpt"
+CHECKPOINT_LEFT_PATH = "/home/shared/model-weights/left.ckpt"
 MODEL_LEFT = DiffusionModule.load_from_checkpoint(CHECKPOINT_LEFT_PATH, lr=1e-4)
 RECONSTRUCT_LEFT = lambda x: MODEL_LEFT.fast_reconstruct(*x, num_inference_steps=10, guidance=True)
 
@@ -68,7 +68,7 @@ def inject_extra_projection(projections, gt, inject_second=False):
 synthetic_test_adaptive(
     model=MODEL_RIGHT,
     ds=XRayDatasetRight(root_dir=DATA_PATH, transform=inject_extra_projection),
-    csv_output_path=RESULTS_RIGHT_PATH,
+    csv_output_path="data/synthetic_extra_projections_p3_right.csv",
     reconstruct=RECONSTRUCT_RIGHT
 )
 
@@ -76,7 +76,7 @@ synthetic_test_adaptive(
 synthetic_test_adaptive(
     model=MODEL_RIGHT,
     ds=XRayDatasetRight(root_dir=DATA_PATH, transform=lambda p, gt: inject_extra_projection(p, gt, True)),
-    csv_output_path=RESULTS_RIGHT_PATH,
+    csv_output_path="data/synthetic_extra_projections_p4_right.csv",
     reconstruct=RECONSTRUCT_RIGHT
 )
 
@@ -84,16 +84,16 @@ synthetic_test_adaptive(
 
 ## P = 3
 synthetic_test_adaptive(
-    model=MODEL_RIGHT,
-    ds=XRayDatasetRight(root_dir=DATA_PATH, transform=inject_extra_projection),
-    csv_output_path=RESULTS_LEFT_PATH,
-    reconstruct=RECONSTRUCT_RIGHT
+    model=MODEL_LEFT,
+    ds=XRayDatasetLeft(root_dir=DATA_PATH, transform=inject_extra_projection),
+    csv_output_path="data/synthetic_extra_projections_p3_left.csv",
+    reconstruct=RECONSTRUCT_LEFT
 )
 
 ## P = 4
 synthetic_test_adaptive(
-    model=MODEL_RIGHT,
+    model=MODEL_LEFT,
     ds=XRayDatasetLeft(root_dir=DATA_PATH, transform=lambda p, gt: inject_extra_projection(p, gt, True)),
-    csv_output_path=RESULTS_LEFT_PATH,
-    reconstruct=RECONSTRUCT_RIGHT
+    csv_output_path="data/synthetic_extra_projections_p4_left.csv",
+    reconstruct=RECONSTRUCT_LEFT
 )

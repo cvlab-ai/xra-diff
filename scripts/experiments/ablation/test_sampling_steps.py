@@ -5,8 +5,8 @@ from reconsnet.data.dataset import XRayDatasetRight, XRayDatasetLeft, ClinicalDa
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 CLINICAL_DATA_RIGHT_PATH = "/home/shared/uck-right"
 CLINICAL_DATA_LEFT_PATH = "/home/shared/uck-left"
-CHECKPOINT_RIGHT_PATH = "stronger-conditioning.ckpt"
-CHECKPOINT_LEFT_PATH = "left.ckpt"
+CHECKPOINT_RIGHT_PATH = "/home/shared/model-weights/right.ckpt"
+CHECKPOINT_LEFT_PATH = "/home/shared/model-weights/left.ckpt"
 
 print("---------Sampling steps--------------------------")
 
@@ -15,9 +15,9 @@ model_left = DiffusionModule.load_from_checkpoint(CHECKPOINT_LEFT_PATH, lr=1e-5)
 ds_synthetic_right = XRayDatasetRight(root_dir=DATA_PATH)
 ds_clinical_right = ClinicalDataset(root_dir=CLINICAL_DATA_RIGHT_PATH)
 ds_synthetic_left = XRayDatasetLeft(root_dir=DATA_PATH)
-# ds_clinical_left = ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH)
+ds_clinical_left = ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH)
 
-for steps in [1, 5, 10, 20, 50]:
+for steps in [1, 3, 5, 10, 20, 50, 100]:
     reconstruct_right = lambda x: model_right.fast_reconstruct(*x, num_inference_steps=steps, guidance=True)
     reconstruct_left = lambda x: model_left.fast_reconstruct(*x, num_inference_steps=steps, guidance=True)
 
@@ -27,24 +27,22 @@ for steps in [1, 5, 10, 20, 50]:
         csv_output_path=f"data/synthetic_sampling_steps_{steps}_right.csv",
         reconstruct=reconstruct_right
     )
-    # NOTE: disabled for pilot study
-    # clinical_test(
-    #     model=model_right,
-    #     ds=ds_clinical_right,
-    #     csv_output_path=f"data/clinical_sampling_steps_{steps}_right.csv",
-    #     reconstruct=reconstruct_right,
-    # )
     synthetic_test_adaptive(
         model=model_left,
         ds=ds_synthetic_left,
         csv_output_path=f"data/synthetic_sampling_steps_{steps}_left.csv",
         reconstruct=reconstruct_left
     )
-    # TODO: enable once left side dataset is prepared
-    # clinical_test(
-    #     model=model_left,
-    #     ds=ds_clinical_left,
-    #     csv_output_path=f"data/synthetic_sampling_steps_{steps}_left.csv",
-    #     reconstruct=reconstruct_left,
-    # )
+    clinical_test(
+        model=model_right,
+        ds=ds_clinical_right,
+        csv_output_path=f"data/clinical_sampling_steps_{steps}_right.csv",
+        reconstruct=reconstruct_right,
+    )
+    clinical_test(
+        model=model_left,
+        ds=ds_clinical_left,
+        csv_output_path=f"data/clinical_sampling_steps_{steps}_left.csv",
+        reconstruct=reconstruct_left,
+    )
     

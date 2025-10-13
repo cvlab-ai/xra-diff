@@ -28,21 +28,41 @@ def downsample(volume, tgt=(60,60,60)):
                                stride=(sd, sh, sw),
                                ceil_mode=False)
     return volume_down
-    
+
+
+def add_tolerance(pred_bin, gt_bin, tol=1, convd=3):
+        kernel_size = 2 * tol + 1
+        if convd == 3:
+            conv = F.conv3d
+            kernelsz = (1, 1, kernel_size, kernel_size, kernel_size)
+        else:
+            conv = F.conv2d
+            kernelsz = (1, 1, kernel_size, kernel_size)
+
+        kernel = torch.ones(kernelsz, device=pred_bin.device)
+        pred_dil = (conv(pred_bin, kernel, padding=tol) > 0).float()
+        gt_dil   = (conv(gt_bin, kernel, padding=tol) > 0).float()
+        return pred_dil, gt_dil
+
 
 def confusion(pred, target, threshold, prefix="", suffix=None):
     if suffix is None: suffix = threshold
    
-    
     pred_bin = (pred > threshold).float()
     pred_bin = denoise_voxels(pred_bin)
     gt_bin = (target > 0).float()
+    
+    # pred_bin, gt_bin = add_tolerance(pred_bin, gt_bin)
     tp = (pred_bin * gt_bin).sum().item()
     fp = (pred_bin * (1 - gt_bin)).sum().item()
     fn = ((1 - pred_bin) * gt_bin).sum().item()
     tn = ((1 - pred_bin) * (1 - gt_bin)).sum().item()
     dice3d = (2 * tp) / (2 * tp + fp + fn + 1e-8)
     
+    # print(pred.min(), pred.max(), pred.mean())
+    # print("gt unique:", np.unique(target)[:10])
+    # print("shapes:", pred.shape, target.shape)
+        
     return {
         f"{prefix}dice3d_{suffix}": dice3d,
         f"{prefix}TP_{suffix}": tp, 
@@ -52,7 +72,7 @@ def confusion(pred, target, threshold, prefix="", suffix=None):
     }
 
 
-def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.7):
+def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.0):
     if suffix is None: suffix = threshold
 
     pred_down = pred
@@ -67,10 +87,7 @@ def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.7)
     
     if pred_points.shape[0] == 0 or gt_points.shape[0] == 0:
         return {f"{prefix}chamfer_{suffix}": 1e7}
-
-    
     dist_matrix = torch.cdist(pred_points, gt_points, p=2)
-
     min_dist_1_to_2 = torch.min(dist_matrix, dim=1).values * to_mm
     min_dist_2_to_1 = torch.min(dist_matrix, dim=0).values * to_mm
     dist_1 = torch.mean(min_dist_1_to_2, dim=0)
@@ -82,10 +99,62 @@ def chamfer_distance(pred, target, threshold, prefix="", suffix=None, to_mm=1.7)
     }
 
 
+def earth_movers_distance(pred, target, threshold, prefix="", suffix="None"):
+    from scipy.optimize import linear_sum_assignment
+    
+
+    pred_bin = (pred > threshold).float()
+    pred_bin = denoise_voxels(pred_bin)
+    gt_bin = (target > 0).float()
+
+    pred_points = pred_bin.nonzero(as_tuple=False).float()
+    gt_points = gt_bin.nonzero(as_tuple=False).float()
+    
+    N, M = pred_points.shape[0], gt_points.shape[0]
+    if N != M:
+        n = min(N, M)
+        pred_points = pred_points[torch.randperm(N)[:n]]
+        gt_points = gt_points[torch.randperm(M)[:n]]
+    
+    dist_matrix = torch.cdist(pred_points, gt_points, p=2).cpu().numpy()
+    row_ind, col_ind = linear_sum_assignment(dist_matrix)
+    emd = dist_matrix[row_ind, col_ind].mean()
+    return {
+        f"{prefix}emd_{suffix}": emd
+    }
+
+def ot_metric(pred, target, threshold, d_mm, prefix="", suffix=None, to_mm=1.0):
+    if suffix is None: suffix = threshold
+
+    pred_down = pred
+    target_down = target
+    
+    pred_bin = (pred_down > threshold).float()
+    pred_bin = denoise_voxels(pred_bin)
+    gt_bin = (target_down > 0).float()
+
+    pred_points = pred_bin.nonzero(as_tuple=False).float()
+    gt_points = gt_bin.nonzero(as_tuple=False).float()
+    
+    if pred_points.shape[0] == 0 or gt_points.shape[0] == 0:
+        return {f"{prefix}Ot({d_mm})_{suffix}": 0}
+
+    dist_matrix = torch.cdist(pred_points, gt_points, p=2) * to_mm
+
+    tpr = (torch.min(dist_matrix, axis=0)[0] <= d_mm).sum()
+    fn = dist_matrix.shape[1] - tpr
+    tpm = (torch.min(dist_matrix, axis=1)[0] <= d_mm).sum()
+    fp = dist_matrix.shape[0] - tpm
+
+    ot_metric = (tpm + tpr) / (tpm + tpr + fp + fn)
+
+    return {f"{prefix}Ot({d_mm})_{suffix}": float(ot_metric)}
+
+
 def interpret_frac(pred, backproj, threshold=0.2):
     pred_bin = (pred >= threshold)
     backproj_bin = backproj.bool()
-
+    
     intersection = (pred_bin & backproj_bin).sum().item()
     total_pred = pred_bin.sum().item()
 
@@ -107,13 +176,37 @@ def chamfer_distance_image(img1, img2):
 
 
 def dice_image(img1, img2):
-    img1 = img1.astype(bool)
-    img2 = img2.astype(bool)
-    intersection = np.logical_and(img1, img2).sum()
+    img1 = torch.from_numpy(img1.astype(bool)).float().unsqueeze(dim=0)
+    img2 = torch.from_numpy(img2.astype(bool)).float().unsqueeze(dim=0)
+    img1, img2 = add_tolerance(img1, img2, tol=1, convd=2)
+    
+    intersection = torch.logical_and(img1, img2).sum()
     size1 = img1.sum()
     size2 = img2.sum()
     return 2.0 * intersection / (size1 + size2)
 
 
-def lumen_diameter_error(pred, target):
-    pass
+def ssim3d(x, y, window_size=7, C1=1e-4, C2=9e-4):
+    def create_window(size, sigma=1.5):
+        coords = torch.arange(size, dtype=torch.float32) - size // 2
+        g = torch.exp(-(coords ** 2) / (2 * sigma ** 2))
+        g = g / g.sum()
+        window_1d = g.view(1, 1, -1)
+        window_3d = (window_1d.transpose(2, 1) * g).view(size, size, 1) * g.view(1, 1, size)
+        window_3d = window_3d / window_3d.sum()
+        return window_3d.to(x.device)
+
+    window = create_window(window_size).unsqueeze(0).unsqueeze(0)
+
+    mu_x = F.conv3d(x, window, padding=window_size//2)
+    mu_y = F.conv3d(y, window, padding=window_size//2)
+
+    mu_x2, mu_y2 = mu_x**2, mu_y**2
+    mu_xy = mu_x * mu_y
+
+    sigma_x2 = F.conv3d(x*x, window, padding=window_size//2) - mu_x2
+    sigma_y2 = F.conv3d(y*y, window, padding=window_size//2) - mu_y2
+    sigma_xy = F.conv3d(x*y, window, padding=window_size//2) - mu_xy
+
+    ssim_map = ((2 * mu_xy + C1) * (2 * sigma_xy + C2)) / ((mu_x2 + mu_y2 + C1) * (sigma_x2 + sigma_y2 + C2))
+    return ssim_map.mean()

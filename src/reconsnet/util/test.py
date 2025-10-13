@@ -6,7 +6,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .metrics import confusion, chamfer_distance, interpret_frac, downsample, chamfer_distance_image, dice_image
+from .metrics import *
 from ..data.postprocess import percentile_threshold, denoise_voxels
 from ..util.coords import reproject
 from torchmetrics import PeakSignalNoiseRatio as PSNR
@@ -48,18 +48,20 @@ def synthetic_test(
                 }
                 
                 backprojection = backprojection.unsqueeze(0)
-                hat_down = downsample(hat, tgt=(30, 30, 30))
-                gt_down = downsample(gt, tgt=(30, 30, 30))
-                bp_down = downsample(backprojection, tgt=(30, 30, 30))
                 
                 for threshold in np.linspace(**THRESHOLD_RANGE):
                     entry = {
                         **entry,
-                        **confusion(hat_down, gt_down, threshold, prefix="refined_"),
+                        **confusion(hat, gt, threshold, prefix="refined_"),
                         **chamfer_distance(hat, gt, threshold, prefix="refined_"),
-                        **confusion(bp_down, gt_down, threshold, prefix="backproj_"),
+                        **ot_metric(hat, gt, threshold, d_mm=0, prefix="refined_"),
+                        **ot_metric(hat, gt, threshold, d_mm=1, prefix="refined_"),
+                        **ot_metric(hat, gt, threshold, d_mm=2, prefix="refined_"),
+                        **confusion(hat, gt, threshold, prefix="backproj_"),
                         **chamfer_distance(backprojection, gt, threshold, prefix="backproj_"),
-                   
+                        **ot_metric(backprojection, gt, threshold, d_mm=0, prefix="backproj_"),
+                        **ot_metric(backprojection, gt, threshold, d_mm=1, prefix="backproj_"),
+                        **ot_metric(backprojection, gt, threshold, d_mm=2, prefix="backproj_")
                     }
                 entry = {
                     **entry,
@@ -104,12 +106,7 @@ def synthetic_test_adaptive(
                 }
                 
                 backprojection = backprojection.unsqueeze(0)
-                hat_down = downsample(hat, tgt=(30, 30, 30))
-                gt_down = downsample(gt, tgt=(30, 30, 30))
-                bp_down = downsample(backprojection, tgt=(30, 30, 30))
-                
                 threshold = percentile_threshold(hat)
-                threshold_down = percentile_threshold(hat_down)
                 
                 hat_bin = denoise_voxels((hat > threshold).float()).squeeze().cpu().numpy()
                 pred0, pred1 = reproject(hat_bin, xray0, xray1, camera_grid_size)
@@ -122,12 +119,20 @@ def synthetic_test_adaptive(
 
                 entry = {
                     **entry,
-                    **confusion(hat_down, gt_down, threshold_down, prefix="refined_", suffix="adaptive"),
+                    **confusion(hat, gt, threshold, prefix="refined_", suffix="adaptive"),
                     **chamfer_distance(hat, gt, threshold, prefix="refined_", suffix="adaptive"),
-                    **confusion(bp_down, gt_down, threshold_down, prefix="backproj_", suffix="adaptive"),
+                    **ot_metric(hat, gt, threshold, d_mm=0, prefix="refined_", suffix="adaptive"),
+                    **ot_metric(hat, gt, threshold, d_mm=1, prefix="refined_", suffix="adaptive"),
+                    **ot_metric(hat, gt, threshold, d_mm=2, prefix="refined_", suffix="adaptive"),
+                    **confusion(backprojection, gt, threshold, prefix="backproj_", suffix="adaptive"),
                     **chamfer_distance(backprojection, gt, threshold, prefix="backproj_", suffix="adaptive"),
+                    **ot_metric(backprojection, gt, threshold, d_mm=0, prefix="backproj_", suffix="adaptive"),
+                    **ot_metric(backprojection, gt, threshold, d_mm=1, prefix="backproj_", suffix="adaptive"),
+                    **ot_metric(backprojection, gt, threshold, d_mm=2, prefix="backproj_", suffix="adaptive"),
                     "interpret_frac": interpret_frac(hat, backprojection, threshold),
-                    "PSNR": psnr(hat, gt),
+                    "PSNR": psnr(hat, gt).item(),
+                    **earth_movers_distance(hat, gt, threshold, prefix="refined_", suffix="adaptive"),
+                    **earth_movers_distance(backprojection, gt, threshold, prefix="refined_", suffix="adaptive"),
                     **_reproj_metric(chamfer_distance_image, "chamfer_distance", args),
                     **_reproj_metric(dice_image, "dice2d", args)
                 }
@@ -183,10 +188,10 @@ def clinical_test(
 def _reproj_metric(f, name, args):
     pred0, pred1, backproj0, backproj1, xray0, xray1 = args
     
-    m0 = f(pred0.asarray(), xray0.img.cpu().numpy())
-    m1 = f(pred1.asarray(), xray1.img.cpu().numpy())
-    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy())
-    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy())
+    m0 = f(pred0.asarray(), xray0.img.cpu().numpy()).item()
+    m1 = f(pred1.asarray(), xray1.img.cpu().numpy()).item()
+    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy()).item()
+    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy()).item()
     return {
         f"{name}0": m0,
         f"{name}1": m1,

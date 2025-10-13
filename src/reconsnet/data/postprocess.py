@@ -23,7 +23,7 @@ def denoise_voxels(voxel_grid, min_neighbors=10):
 
     return voxel_grid_denoised
 
-def percentile_threshold(voxels, percentile=0.95):
+def percentile_threshold(voxels, percentile=0.99):
     flat = voxels.flatten()
     thresh = torch.quantile(flat, percentile)
     return thresh

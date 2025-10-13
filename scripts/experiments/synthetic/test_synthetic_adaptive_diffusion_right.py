@@ -1,11 +1,8 @@
-'''
-test on a synthesized dataset
-'''
 from reconsnet.util.test import synthetic_test_adaptive
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetRight
 
-CHECKPOINT_PATH = "stronger-conditioning.ckpt"
+CHECKPOINT_PATH = "/home/shared/model-weights/right.ckpt"
 DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
 RESULTS_PATH = "data/synthetic_adaptive_diffusion_right.csv"
 MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)

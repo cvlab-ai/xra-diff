@@ -1,12 +1,8 @@
-import torch.nn.functional as F
-
 from reconsnet.util.test import clinical_test
 from reconsnet.model.gan import GANModule
 from reconsnet.data.dataset import ClinicalDataset
 
-from torch.utils.data import Subset
-
-CHECKPOINT_PATH = "baseline.ckpt"
+CHECKPOINT_PATH = "/home/shared/model-weights/baseline-gan-right.ckpt"
 DATA_PATH = "/home/shared/uck-right"
 RESULTS_PATH = "data/clinical_gan_right.csv"
 MODEL = GANModule.load_from_checkpoint(CHECKPOINT_PATH)

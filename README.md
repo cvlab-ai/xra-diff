@@ -49,4 +49,16 @@ Under `notebooks` directory:
 - `clinical_results.ipynb` (3.3. Clinical feasibility)
 - `ablation.ipynb` (3.4. Ablation study)
 - `clinical_qualitative.ipynb` (3.5. Qualitative analysis)
-- TODO (3.6. Intepretability)
+
+# Model weights
+
+Are available at Zenodo under [Todo]()
+
+# Experiment results
+
+CSV's with our measurements are also at Zenodo under [Todo]()
+
+# Some examples
+
+![](media/animation0.gif) ![](media/animation1.gif) ![](media/animation2.gif)
+![](media/animation3.gif) ![](media/animation4.gif) ![](media/animation5.gif)

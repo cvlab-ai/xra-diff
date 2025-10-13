@@ -2,7 +2,7 @@ from reconsnet.data.dataset import ClinicalDataset
 from reconsnet.util.test import clinical_test
 from reconsnet.model.diffusion import DiffusionModule
 
-CHECKPOINT_PATH = "stronger-conditioning.ckpt"
+CHECKPOINT_PATH = "/home/shared/model-weights/right.ckpt"
 DATA_PATH = "/home/shared/uck-right"
 RESULTS_PATH = "data/clinical_diffusion_right.csv"
 MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)

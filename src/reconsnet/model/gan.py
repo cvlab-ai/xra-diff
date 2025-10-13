@@ -26,7 +26,6 @@ class GANModule(pl.LightningModule):
         self.automatic_optimization = False
 
         self.lr = lr
-        self.num_critics = 2
         self.generator = Generator(in_channels=1, num_filters=64, class_num=1)
 
         # device is not set to cuda yet
@@ -64,28 +63,27 @@ class GANModule(pl.LightningModule):
         optimizer_d.step()
         self.untoggle_optimizer(optimizer_d)
 
-        if (batch_idx + 1) % self.num_critics == 0:
-            self.toggle_optimizer(optimizer_g)
-            output = self.generator(volumes)
-            
-            DG_score = self.discriminator(torch.cat((volumes, output), 1).detach()).mean()
-            G_loss = -DG_score
-            l1_loss = self._generation_eval(output, gt)
-            combined_loss = G_loss + l1_loss*100
-            self.log(f"train_generator_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
-            # self.log(f"g_loss(-dg_score)", G_loss, on_epoch=True, on_step=True, prog_bar=True)
-            # self.log(f"l1_loss", l1_loss, on_epoch=True, on_step=True, prog_bar=True)
+        self.toggle_optimizer(optimizer_g)
+        output = self.generator(volumes)
+        
+        DG_score = self.discriminator(torch.cat((volumes, output), 1).detach()).mean()
+        G_loss = -DG_score
+        l1_loss = self._generation_eval(output, gt)
+        combined_loss = G_loss + l1_loss*100
+        self.log(f"train_generator_loss", combined_loss, on_epoch=True, on_step=True, prog_bar=True)
+        # self.log(f"g_loss(-dg_score)", G_loss, on_epoch=True, on_step=True, prog_bar=True)
+        # self.log(f"l1_loss", l1_loss, on_epoch=True, on_step=True, prog_bar=True)
 
-            self.manual_backward(combined_loss)
-            optimizer_g.step()
-            self.untoggle_optimizer(optimizer_g)
+        self.manual_backward(combined_loss)
+        optimizer_g.step()
+        self.untoggle_optimizer(optimizer_g)
 
     def validation_step(self, batch, batch_idx):
         volumes, gt, _, _ = batch
         
         outputs = self.generator(volumes)
 
-        DG_score = self.discriminator(torch.cat((volumes, F.sigmoid(outputs)), 1)).mean() # D(G(z))
+        DG_score = self.discriminator(torch.cat((volumes, outputs), 1)).mean() # D(G(z))
         G_loss = -DG_score
         l1_loss = self._generation_eval(outputs, gt)
         combined_loss = G_loss + l1_loss * 100
@@ -99,7 +97,7 @@ class GANModule(pl.LightningModule):
         x, y, _, _ = batch
         x = x.to(self.device)
         y = y.to(self.device)  
-        sampled_voxels = F.sigmoid(self.generator(x))
+        sampled_voxels = self.generator(x)
 
         def log_sample(ix, threshold=0.5):
             voxels = sampled_voxels[ix][0]
@@ -157,7 +155,7 @@ class GANModule(pl.LightningModule):
         )
         d_optimizer = optim.Adam(
             self.discriminator.parameters(), 
-            lr=1e-4,
+            lr=self.lr,
             betas=(0.5, 0.9)
         )
         return g_optimizer, d_optimizer
