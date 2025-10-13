@@ -68,7 +68,7 @@ def inject_extra_projection(projections, gt, inject_second=False):
 synthetic_test_adaptive(
     model=MODEL_RIGHT,
     ds=XRayDatasetRight(root_dir=DATA_PATH, transform=inject_extra_projection),
-    csv_output_path=RESULTS_RIGHT_PATH,
+    csv_output_path="data/synthetic_extra_projections_p3_right.csv",
     reconstruct=RECONSTRUCT_RIGHT
 )
 
@@ -76,7 +76,7 @@ synthetic_test_adaptive(
 synthetic_test_adaptive(
     model=MODEL_RIGHT,
     ds=XRayDatasetRight(root_dir=DATA_PATH, transform=lambda p, gt: inject_extra_projection(p, gt, True)),
-    csv_output_path=RESULTS_RIGHT_PATH,
+    csv_output_path="data/synthetic_extra_projections_p4_right.csv",
     reconstruct=RECONSTRUCT_RIGHT
 )
 
@@ -86,7 +86,7 @@ synthetic_test_adaptive(
 synthetic_test_adaptive(
     model=MODEL_LEFT,
     ds=XRayDatasetLeft(root_dir=DATA_PATH, transform=inject_extra_projection),
-    csv_output_path=RESULTS_LEFT_PATH,
+    csv_output_path="data/synthetic_extra_projections_p3_left.csv",
     reconstruct=RECONSTRUCT_LEFT
 )
 
@@ -94,6 +94,6 @@ synthetic_test_adaptive(
 synthetic_test_adaptive(
     model=MODEL_LEFT,
     ds=XRayDatasetLeft(root_dir=DATA_PATH, transform=lambda p, gt: inject_extra_projection(p, gt, True)),
-    csv_output_path=RESULTS_LEFT_PATH,
+    csv_output_path="data/synthetic_extra_projections_p4_left.csv",
     reconstruct=RECONSTRUCT_LEFT
 )

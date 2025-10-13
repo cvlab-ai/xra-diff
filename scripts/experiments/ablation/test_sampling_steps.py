@@ -17,7 +17,7 @@ ds_clinical_right = ClinicalDataset(root_dir=CLINICAL_DATA_RIGHT_PATH)
 ds_synthetic_left = XRayDatasetLeft(root_dir=DATA_PATH)
 ds_clinical_left = ClinicalDataset(root_dir=CLINICAL_DATA_LEFT_PATH)
 
-for steps in [1, 5, 10, 20, 50]:
+for steps in [1, 3, 5, 10, 20, 50, 100]:
     reconstruct_right = lambda x: model_right.fast_reconstruct(*x, num_inference_steps=steps, guidance=True)
     reconstruct_left = lambda x: model_left.fast_reconstruct(*x, num_inference_steps=steps, guidance=True)
 
@@ -42,7 +42,7 @@ for steps in [1, 5, 10, 20, 50]:
     clinical_test(
         model=model_left,
         ds=ds_clinical_left,
-        csv_output_path=f"data/synthetic_sampling_steps_{steps}_left.csv",
+        csv_output_path=f"data/clinical_sampling_steps_{steps}_left.csv",
         reconstruct=reconstruct_left,
     )
     
