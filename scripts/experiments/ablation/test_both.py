@@ -3,7 +3,7 @@ from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetLeft, XRayDatasetRight, ClinicalDataset
 
 CHECKPOINT_PATH = "/home/shared/model-weights/both.ckpt"
-DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
+DATA_PATH = "/home/shared/imagecas/projections_split/val"
 CLINICAL_DATA_RIGHT_PATH = "/home/shared/uck-right"
 CLINICAL_DATA_LEFT_PATH = "/home/shared/uck-left"
 MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)

@@ -12,7 +12,7 @@ from reconsnet.data.dataset import XRayDatasetRight, XRayDatasetLeft, default_tr
 from reconsnet.util.camera import build_camera_model
 
 
-DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
+DATA_PATH = "/home/shared/imagecas/projections_split/val"
 
 RESULTS_RIGHT_PATH = "data/synthetic_extra_projections_right.csv"
 CHECKPOINT_RIGHT_PATH = "/home/shared/model-weights/right.ckpt"

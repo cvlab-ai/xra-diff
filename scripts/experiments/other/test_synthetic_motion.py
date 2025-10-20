@@ -2,7 +2,7 @@ from reconsnet.util.test import synthetic_test_adaptive
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetRight, XRayDatasetLeft, default_transform, random_move, random_scale
 
-DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
+DATA_PATH = "/home/shared/imagecas/projections_split/val"
 CHECKPOINT_RIGHT_PATH = "/home/shared/model-weights/right.ckpt"
 CHECKPOINT_LEFT_PATH = "/home/shared/model-weights/left.ckpt"
 MODEL_RIGHT = DiffusionModule.load_from_checkpoint(CHECKPOINT_RIGHT_PATH, lr=1e-4)

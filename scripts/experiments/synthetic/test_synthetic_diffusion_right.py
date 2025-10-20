@@ -3,7 +3,7 @@ from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetRight
 
 CHECKPOINT_PATH = "/home/shared/model-weights/right.ckpt"
-DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
+DATA_PATH = "/home/shared/imagecas/projections_split/val"
 RESULTS_PATH = "data/synthetic_diffusion_right.csv"
 MODEL = DiffusionModule.load_from_checkpoint(CHECKPOINT_PATH, lr=1e-4)
 RECONSTRUCT = lambda x: MODEL.fast_reconstruct(*x, num_inference_steps=10, guidance=True)

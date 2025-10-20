@@ -3,7 +3,7 @@ from reconsnet.model.gan import GANModule
 from reconsnet.data.dataset import XRayDatasetLeft
 
 CHECKPOINT_PATH = "/home/shared/model-weights/baseline-gan-left.ckpt"
-DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
+DATA_PATH = "/home/shared/imagecas/projections_split/val"
 RESULTS_PATH = "data/synthetic_adaptive_gan_left.csv"
 MODEL = GANModule.load_from_checkpoint(CHECKPOINT_PATH)
 RECONSTRUCT = lambda x: MODEL.generator.forward(x[0])

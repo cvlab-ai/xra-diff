@@ -2,7 +2,7 @@ from reconsnet.util.test import synthetic_test_adaptive, clinical_test
 from reconsnet.model.diffusion import DiffusionModule
 from reconsnet.data.dataset import XRayDatasetRight, XRayDatasetLeft, ClinicalDataset
 
-DATA_PATH = "/home/shared/imagecas/projections_split/pilot"
+DATA_PATH = "/home/shared/imagecas/projections_split/val"
 CLINICAL_DATA_RIGHT_PATH = "/home/shared/uck-right"
 CLINICAL_DATA_LEFT_PATH = "/home/shared/uck-left"
 CHECKPOINT_RIGHT_PATH = "/home/shared/model-weights/right.ckpt"

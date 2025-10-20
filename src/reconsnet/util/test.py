@@ -188,10 +188,15 @@ def clinical_test(
 def _reproj_metric(f, name, args):
     pred0, pred1, backproj0, backproj1, xray0, xray1 = args
     
-    m0 = f(pred0.asarray(), xray0.img.cpu().numpy()).item()
-    m1 = f(pred1.asarray(), xray1.img.cpu().numpy()).item()
-    bp_m0 = f(backproj0.asarray(), xray0.img.cpu().numpy()).item()
-    bp_m1 = f(backproj1.asarray(), xray1.img.cpu().numpy()).item()
+    def safe_item(x):
+        if hasattr(x, "item") and not isinstance(x, (float, int)):
+            return x.item()
+        return float(x)
+    
+    m0 = safe_item(f(pred0.asarray(), xray0.img.cpu().numpy()))
+    m1 = safe_item(f(pred1.asarray(), xray1.img.cpu().numpy()))
+    bp_m0 = safe_item(f(backproj0.asarray(), xray0.img.cpu().numpy()))
+    bp_m1 = safe_item(f(backproj1.asarray(), xray1.img.cpu().numpy()))
     return {
         f"{name}0": m0,
         f"{name}1": m1,
