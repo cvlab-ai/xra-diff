@@ -81,26 +81,29 @@ def main(max_files=None):
             settings_output = {
                 "datadir": str(PROJECTION_OUTPUT_PATH),
                 "numTrain": 2,
-                "DSD": [settings[0]["sid"], settings[1]["sid"]],
-                "DSO": [settings[0]["sod"], settings[1]["sod"]],
-                "DDE": [
-                    settings[0]["sid"] - settings[0]["sod"],
-                    settings[1]["sid"] - settings[1]["sod"],
-                ],
-                "nDetector": CONFIG["global"]["image_resolution"],
-                "dDetector": [
-                    settings[0]["img_spacing"],
-                    settings[1]["img_spacing"],
-                ],
-                "nVoxel": CONFIG["global"]["grid_resolution"],
-                "dVoxel": [settings[0]["grid_spacing"]] * 3,
-                "first_projection_angle": [
-                    float(settings[0]["alpha"]) * 100,
-                    float(settings[0]["beta"]) * 100,
-                ],
-                "second_projection_angle": [
-                    float(settings[1]["alpha"]) * 100,
-                    float(settings[1]["beta"]) * 100,
+                "global": {
+                    "image_resolution": CONFIG["global"]["image_resolution"],
+                    "grid_resolution": CONFIG["global"]["grid_resolution"],
+                    "image_spacing": float(
+                        np.mean(
+                            [settings[0]["img_spacing"], settings[1]["img_spacing"]]
+                        )
+                    ),
+                    "grid_spacing": float(settings[0]["grid_spacing"]),
+                },
+                "projections_settings": [
+                    {
+                        "alpha": float(np.rad2deg(settings[0]["alpha"])),
+                        "beta": float(np.rad2deg(settings[0]["beta"])),
+                        "sid": float(settings[0]["sid"]),
+                        "sod": float(settings[0]["sod"]),
+                    },
+                    {
+                        "alpha": float(np.rad2deg(settings[1]["alpha"])),
+                        "beta": float(np.rad2deg(settings[1]["beta"])),
+                        "sid": float(settings[1]["sid"]),
+                        "sod": float(settings[1]["sod"]),
+                    },
                 ],
             }
             PROJECTION_OUTPUT_SETTINGS_PATH = PROJECTION_OUTPUT_DIR / "settings.yaml"
