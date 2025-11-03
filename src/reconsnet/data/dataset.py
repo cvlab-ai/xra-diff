@@ -121,7 +121,7 @@ def get_dm_both(train_root_dir, val_root_dir):
     return _get_dm(train_root_dir, val_root_dir, XRayDatasetBoth)
 
 
-def load_clinical_sample(params_path, image_path, dicom=False) -> XRay:
+def load_clinical_sample(params_path, image_path, dicom=False, pairs=False) -> XRay:
     import ast
     
     with open(params_path, 'r') as f:
@@ -137,6 +137,12 @@ def load_clinical_sample(params_path, image_path, dicom=False) -> XRay:
         alpha = np.deg2rad(float(params['(0018,1510)']["value"]))
         beta = np.deg2rad(float(params['(0018,1511)']["value"]))
         spacing = float(ast.literal_eval(params["(0018,1164)"]["value"])[0])
+    elif pairs:
+        sid = float(params['sid'])
+        sod = float(params['sod'])
+        alpha = np.deg2rad(float(params['primary_angle']))
+        beta = np.deg2rad(float(params['secondary_angle']))
+        spacing = float(ast.literal_eval(params['spacing'])[0])
     else:
         sid = float(params['sid'])
         sod = float(params['sod'])
