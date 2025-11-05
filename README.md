@@ -1,6 +1,6 @@
-# XRA-Diff: Guided diffusion for 3D coronaries
+# XRA-Diff: Guided diffusion as a refinement for backprojected coronary angiography X-ray images
 
-"XRA-Diff:  Guided diffusion as a refinement for backprojected coronary angiography X-ray images"
+**If you find any of these useful please cite our article** (see: [reference.bib](reference.bib))
 
 # Installing dependencies
 
