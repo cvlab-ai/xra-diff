@@ -52,11 +52,11 @@ Under `notebooks` directory:
 
 # Model weights
 
-Are available at Zenodo under [Todo]()
+Are available at [Zenodo under 17413997](https://zenodo.org/records/17413997)
 
 # Experiment results
 
-CSV's with our measurements are also at Zenodo under [Todo]()
+CSV's with our measurements are also at [Zenodo under 17413997](https://zenodo.org/records/17413997)
 
 # Some examples
 
